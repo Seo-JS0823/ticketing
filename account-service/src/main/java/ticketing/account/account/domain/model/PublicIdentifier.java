@@ -4,8 +4,8 @@ import java.util.regex.Pattern;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import ticketing.account.account.domain.exception.AccountErrorCode;
 import ticketing.account.account.domain.exception.AccountException;
+import ticketing.account.account.domain.exception.AccountInvalidErrorCode;
 
 @Getter
 @EqualsAndHashCode
@@ -32,13 +32,13 @@ public class PublicIdentifier {
 	
 	private void validateNickname(String nickname) {
 		if (nickname == null || !NICKNAME_PATTERN.matcher(nickname).matches()) {
-			throw new AccountException(AccountErrorCode.INVALID_NICKNAME_PATTERN);
+			throw new AccountException(AccountInvalidErrorCode.INVALID_NICKNAME_PATTERN);
 		}
 	}
 	
 	private void validateTag(String tag) {
 		if (tag == null || !TAG_PATTERN.matcher(tag).matches()) {
-			throw new AccountException(AccountErrorCode.INVALID_TAG_PATTERN);
+			throw new AccountException(AccountInvalidErrorCode.INVALID_TAG_PATTERN);
 		}
 	}
 	

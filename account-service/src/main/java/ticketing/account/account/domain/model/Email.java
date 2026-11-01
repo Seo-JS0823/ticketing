@@ -1,5 +1,38 @@
 package ticketing.account.account.domain.model;
 
-public class Email {
+import java.util.regex.Pattern;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import ticketing.account.account.domain.exception.AccountException;
+import ticketing.account.account.domain.exception.AccountInvalidErrorCode;
+
+@Getter
+@EqualsAndHashCode
+public class Email {
+	
+	private static final String EMAIL_REGEX = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$";
+	
+  private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
+  
+  private final String value;
+  
+  public Email(String value) {
+  	validateEmail(value);
+  	this.value = value;
+  }
+  
+  private void validateEmail(String email) {
+  	if (email == null || email.isBlank()) {
+  		throw new AccountException(AccountInvalidErrorCode.EMAIL_REQUIRED);
+  	}
+  	
+  	if (email.length() > 320) {
+  		throw new AccountException(AccountInvalidErrorCode.EMAIL_TOO_LONG);
+  	}
+  	
+  	if(!EMAIL_PATTERN.matcher(email).matches()) {
+  		throw new AccountException(AccountInvalidErrorCode.INVALID_EMAIL_PATTERN);
+  	}
+  }
 }
