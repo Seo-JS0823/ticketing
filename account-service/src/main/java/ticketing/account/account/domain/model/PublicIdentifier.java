@@ -2,13 +2,19 @@ package ticketing.account.account.domain.model;
 
 import java.util.regex.Pattern;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import ticketing.account.account.domain.exception.AccountException;
 import ticketing.account.account.domain.exception.AccountInvalidErrorCode;
 
 @Getter
 @EqualsAndHashCode
+@Embeddable
+@NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
 public class PublicIdentifier {
 	
 	private static final String NICKNAME_REGEX = "^[가-힣a-zA-Z0-9]{1,8}$";
@@ -19,8 +25,10 @@ public class PublicIdentifier {
 	
 	private static final Pattern TAG_PATTERN = Pattern.compile(TAG_REGEX);
 	
+	@Column(nullable = false, length = 10)
 	private final String nickname;
 	
+	@Column(nullable = false, length = 10)
 	private final String tag;
 	
 	public PublicIdentifier(String nickname, String tag) {
