@@ -28,19 +28,20 @@ public class SocialAccount {
 	private Long id;
 	
 	@ManyToOne(
-			fetch = FetchType.LAZY
+			fetch = FetchType.LAZY,
+			optional = false
 	)
 	@JoinColumn(name = "account_id", nullable = false, updatable = false)
 	private Account account;
 	
-	@Column(length = 30)
+	@Column(length = 30, nullable = false, updatable = false)
 	@Enumerated(EnumType.STRING)
 	private SocialProvider provider;
 	
-	@Column(name = "provider_user_id", nullable = false)
+	@Column(name = "provider_user_id", nullable = false, updatable = false)
 	private String providerUserId;
 	
-	@Column(name = "linked_at", nullable = false)
+	@Column(name = "linked_at", nullable = false, updatable = false)
 	private Instant linkedAt;
 	
 	SocialAccount(Account account, SocialProvider provider, String providerUserId, Instant now) {
