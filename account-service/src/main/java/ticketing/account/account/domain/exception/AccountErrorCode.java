@@ -25,6 +25,11 @@ public enum AccountErrorCode implements DomainErrorCode {
 			"계정이 활성 상태가 아니므로 작업을 수행할 수 없습니다."
 	),
 	
+	SOCIAL_ACCOUNT_ALREADY_CONNECTED(
+			HttpStatus.CONFLICT,
+			"이미 연결된 소셜 계정입니다."
+	),
+	
 	;
 	private final HttpStatus status;
 	

@@ -1,6 +1,8 @@
 package ticketing.account.account.domain.model;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.persistence.CascadeType;
@@ -13,6 +15,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -45,6 +48,7 @@ public class Account {
 	@Enumerated(EnumType.STRING)
 	private AccountStatus status;
 	
+	// 비밀번호
 	@OneToOne(
 			mappedBy = "account",
 			cascade = CascadeType.ALL,
@@ -52,6 +56,14 @@ public class Account {
 			fetch = FetchType.LAZY
 	)
 	private AccountCredential credential;
+	
+	// 연결된 소셜 계정
+	@OneToMany(
+			mappedBy = "account",
+			cascade = CascadeType.ALL,
+			orphanRemoval = true
+	)
+	private List<SocialAccount> socialAccounts = new ArrayList<>();
 	
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -92,6 +104,19 @@ public class Account {
 		
 		this.credential = new AccountCredential(this, passwordHash, now);
 		this.updatedAt = now;
+	}
+	
+	public void connectSocialAccount(SocialProvider provider, String providerUserId, Instant now) {
+		boolean exists = socialAccounts.stream()
+				.anyMatch(social -> social.getProvider() == provider);
+		
+		if (exists) {
+			throw new AccountException(AccountErrorCode.ACCOUNT_NOT_ACTIVE);
+		}
+		
+		SocialAccount socialAccount = new SocialAccount(this, provider, providerUserId, now);
+		
+		socialAccounts.add(socialAccount);
 	}
 	
 	// 이메일 변경
