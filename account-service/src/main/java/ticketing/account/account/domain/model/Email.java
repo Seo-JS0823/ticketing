@@ -22,9 +22,13 @@ public class Email {
   
   private final String email;
   
-  public Email(String email) {
+  private Email(String email) {
   	validateEmail(email);
   	this.email = email;
+  }
+  
+  public static Email of(String email) {
+  	return new Email(email);
   }
   
   private void validateEmail(String email) {

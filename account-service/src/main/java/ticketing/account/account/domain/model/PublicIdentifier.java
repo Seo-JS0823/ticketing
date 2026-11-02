@@ -31,11 +31,15 @@ public class PublicIdentifier {
 	@Column(nullable = false, length = 10)
 	private final String tag;
 	
-	public PublicIdentifier(String nickname, String tag) {
+	private PublicIdentifier(String nickname, String tag) {
 		validateNickname(nickname);
 		validateTag(tag);
 		this.nickname = nickname;
 		this.tag = tag;
+	}
+	
+	public static PublicIdentifier of(String nickname, String tag) {
+		return new PublicIdentifier(nickname, tag);
 	}
 	
 	private void validateNickname(String nickname) {
