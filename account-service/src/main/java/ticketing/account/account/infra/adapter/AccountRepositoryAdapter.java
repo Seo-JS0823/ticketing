@@ -1,0 +1,57 @@
+package ticketing.account.account.infra.adapter;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.stereotype.Repository;
+
+import lombok.RequiredArgsConstructor;
+import ticketing.account.account.domain.model.Account;
+import ticketing.account.account.domain.model.AccountStatus;
+import ticketing.account.account.domain.model.Email;
+import ticketing.account.account.domain.model.PublicIdentifier;
+import ticketing.account.account.domain.model.SocialProvider;
+import ticketing.account.account.domain.repository.AccountRepository;
+import ticketing.account.account.infra.persistence.JpaAccountRepository;
+
+@Repository
+@RequiredArgsConstructor
+public class AccountRepositoryAdapter implements AccountRepository {
+
+	private final JpaAccountRepository jpaAccountRepository;
+
+	@Override
+	public Account save(Account account) {
+		return jpaAccountRepository.save(account);
+	}
+
+	@Override
+	public Optional<Account> findById(UUID accountId) {
+		return jpaAccountRepository.findById(accountId);
+	}
+
+	@Override
+	public Optional<Account> findByEmail(Email email) {
+		return jpaAccountRepository.findByEmail(email.getEmail());
+	}
+
+	@Override
+	public Optional<Account> findBySocialAccount(SocialProvider provider, String providerUserId) {
+		return jpaAccountRepository.findBySocialAccount(provider.name(), providerUserId);
+	}
+
+	@Override
+	public boolean existsActiveByEmail(Email email) {
+		return jpaAccountRepository.existsByEmailAndStatus(email.getEmail(), AccountStatus.ACTIVE.name());
+	}
+
+	@Override
+	public boolean existsByPublicIdentifier(PublicIdentifier publicIdentifier) {
+		return jpaAccountRepository.existsByNicknameAndTag(
+				publicIdentifier.getNickname(),
+				publicIdentifier.getTag()
+		);
+	}
+	
+	
+}
