@@ -149,7 +149,7 @@ public class Account {
 		this.updatedAt = now;
 	}
 	
-	
+	// 업데이트 전 활성 계정 검사
 	private void validateUpdate() {
 		if (this.status != AccountStatus.ACTIVE) {
 			throw new AccountException(AccountErrorCode.ACCOUNT_NOT_ACTIVE);

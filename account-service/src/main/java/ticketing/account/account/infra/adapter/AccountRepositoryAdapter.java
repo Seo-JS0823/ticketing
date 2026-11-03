@@ -32,25 +32,22 @@ public class AccountRepositoryAdapter implements AccountRepository {
 
 	@Override
 	public Optional<Account> findByEmail(Email email) {
-		return jpaAccountRepository.findByEmail(email.getEmail());
+		return jpaAccountRepository.findByEmail(email);
 	}
 
 	@Override
 	public Optional<Account> findBySocialAccount(SocialProvider provider, String providerUserId) {
-		return jpaAccountRepository.findBySocialAccount(provider.name(), providerUserId);
+		return jpaAccountRepository.findBySocialAccount(provider, providerUserId);
 	}
 
 	@Override
 	public boolean existsActiveByEmail(Email email) {
-		return jpaAccountRepository.existsByEmailAndStatus(email.getEmail(), AccountStatus.ACTIVE.name());
+		return jpaAccountRepository.existsByEmailAndStatus(email, AccountStatus.ACTIVE);
 	}
 
 	@Override
 	public boolean existsByPublicIdentifier(PublicIdentifier publicIdentifier) {
-		return jpaAccountRepository.existsByNicknameAndTag(
-				publicIdentifier.getNickname(),
-				publicIdentifier.getTag()
-		);
+		return jpaAccountRepository.existsByPublicIdentifier(publicIdentifier);
 	}
 	
 	

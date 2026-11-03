@@ -8,10 +8,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import ticketing.account.account.domain.model.Account;
+import ticketing.account.account.domain.model.AccountStatus;
+import ticketing.account.account.domain.model.Email;
+import ticketing.account.account.domain.model.PublicIdentifier;
+import ticketing.account.account.domain.model.SocialProvider;
 
 public interface JpaAccountRepository extends JpaRepository<Account, UUID> {
 
-	Optional<Account> findByEmail(String email);
+	Optional<Account> findByEmail(Email email);
 
 	@Query(
 			"""
@@ -23,12 +27,12 @@ public interface JpaAccountRepository extends JpaRepository<Account, UUID> {
 			"""
 	)
 	Optional<Account> findBySocialAccount(
-			@Param("provider") String provider,
+			@Param("provider") SocialProvider provider,
 			@Param("providerUserId") String providerUserId
 	);
 
-	boolean existsByEmailAndStatus(String email, String name);
+	boolean existsByEmailAndStatus(Email email, AccountStatus status);
 
-	boolean existsByNicknameAndTag(String nickname, String tag);
+	boolean existsByPublicIdentifier(PublicIdentifier publicIdentifier);
 
 }
