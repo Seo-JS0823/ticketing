@@ -3,7 +3,7 @@ name: CI Pipeline
 on:
   pull_request:
     branches: [develop, main]
-    path:
+    paths:
       - 'account-service/**'
       - '.github/workflows/account-service-ci.yml'
 
