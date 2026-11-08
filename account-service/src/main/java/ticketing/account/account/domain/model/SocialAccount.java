@@ -44,6 +44,12 @@ public class SocialAccount {
 	@Column(name = "linked_at", nullable = false, updatable = false)
 	private Instant linkedAt;
 	
+	@Column(name = "updated_at", nullable = false)
+	private Instant updatedAt;
+	
+	@Column(name = "deleted_at")
+	private Instant deletedAt;
+	
 	SocialAccount(Account account, SocialProvider provider, String providerUserId, Instant now) {
 		this.account = account;
 		this.provider = provider;
@@ -51,4 +57,7 @@ public class SocialAccount {
 		this.linkedAt = now;
 	}
 	
+	boolean isActive() {
+		return this.deletedAt == null;
+	}
 }

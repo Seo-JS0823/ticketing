@@ -18,12 +18,15 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import ticketing.account.account.domain.exception.AccountErrorCode;
 import ticketing.account.account.domain.exception.AccountException;
 
 @Entity
 @Table(name = "accounts")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class Account {
 	
@@ -77,11 +80,12 @@ public class Account {
 	@Column(name = "recovery_expires_at")
 	private Instant recoveryExpiresAt;
 	
-	public static Account register(PublicIdentifier publicIdentifier, Email email, Instant now) {
+	public static Account register(PublicIdentifier publicIdentifier, Email email, Instant now, Instant emailVerifiedAt) {
 		Account account = new Account();
 		
 		account.publicIdentifier = publicIdentifier;
 		account.email = email;
+		account.emailVerifiedAt = emailVerifiedAt;
 		
 		account.role = AccountRole.USER;
 		account.status = AccountStatus.ACTIVE;
@@ -96,7 +100,7 @@ public class Account {
 	
 	// 비밀번호 생성 및 연결
 	public void registerPassword(String passwordHash, Instant now) {
-		validateUpdate();
+		validateNotWithdrawn();
 		
 		if (this.credential != null) {
 			throw new AccountException(AccountErrorCode.CREDENTIAL_ALREADY_REGISTERED);
@@ -107,21 +111,22 @@ public class Account {
 	}
 	
 	public void connectSocialAccount(SocialProvider provider, String providerUserId, Instant now) {
+		validateActive();
+		
 		boolean exists = socialAccounts.stream()
-				.anyMatch(social -> social.getProvider() == provider);
+				.anyMatch(social -> social.isActive() && social.getProvider() == provider);
 		
 		if (exists) {
-			throw new AccountException(AccountErrorCode.ACCOUNT_NOT_ACTIVE);
+			throw new AccountException(AccountErrorCode.SOCIAL_ACCOUNT_ALREADY_CONNECTED);
 		}
 		
-		SocialAccount socialAccount = new SocialAccount(this, provider, providerUserId, now);
-		
-		socialAccounts.add(socialAccount);
+		socialAccounts.add(new SocialAccount(this, provider, providerUserId, now));
+		this.updatedAt = now;
 	}
 	
 	// 이메일 변경
 	public void changeEmail(String newEmail) {
-		validateUpdate();
+		validateActive();
 		
 		Email email = Email.of(newEmail);
 		
@@ -130,7 +135,7 @@ public class Account {
 	
 	// 닉네임&태그 변경
 	public void changePublicIdentifier(String nickname, String tag) {
-		validateUpdate();
+		validateActive();
 		
 		PublicIdentifier publicIdentifier = PublicIdentifier.of(nickname, tag);
 		
@@ -138,8 +143,8 @@ public class Account {
 	}
 	
 	// 비밀번호 변경
-	public void chagnePassword(String passwordHash, Instant now) {
-		validateUpdate();
+	public void changePassword(String passwordHash, Instant now) {
+		validateNotWithdrawn();
 		
 		if (this.credential == null) {
 			throw new AccountException(AccountErrorCode.CREDENTIAL_NOT_REGISTERED);
@@ -150,8 +155,15 @@ public class Account {
 	}
 	
 	// 업데이트 전 활성 계정 검사
-	private void validateUpdate() {
+	private void validateActive() {
 		if (this.status != AccountStatus.ACTIVE) {
+			throw new AccountException(AccountErrorCode.ACCOUNT_NOT_ACTIVE);
+		}
+	}
+	
+	// 비밀번호 등 보안 작업 전 탈퇴 여부 검사
+	private void validateNotWithdrawn() {
+		if (this.status == AccountStatus.WITHDRAWN) {
 			throw new AccountException(AccountErrorCode.ACCOUNT_NOT_ACTIVE);
 		}
 	}

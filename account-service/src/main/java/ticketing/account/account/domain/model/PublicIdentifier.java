@@ -48,6 +48,10 @@ public class PublicIdentifier {
 		this.tag = normalizedTag;
 	}
 	
+	public static PublicIdentifier of(String nickname, String tag) {
+		return new PublicIdentifier(nickname, tag);
+	}
+	
 	// 가입 시 태그 생성
 	public static PublicIdentifier withGeneratedTag(String nickname, RandomGenerator random) {
 		StringBuilder tag = new StringBuilder(GENERATED_TAG_LENGTH);
