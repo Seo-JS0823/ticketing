@@ -1,5 +1,6 @@
 package ticketing.account.account.domain.model;
 
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import jakarta.persistence.Embeddable;
@@ -24,7 +25,9 @@ public class Email {
   
   private Email(String email) {
   	validateEmail(email);
-  	this.email = email;
+  	
+  	// 소문자 정규화. 지역별 언어 특성에 상관없이 Unicode 기준 = Locale.ROOT Parameter
+  	this.email = email.toLowerCase(Locale.ROOT);
   }
   
   public static Email of(String email) {
