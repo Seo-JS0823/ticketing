@@ -43,7 +43,7 @@ public class AccountRepositoryAdapter implements AccountRepository {
 
 	@Override
 	public List<Account> findWithdrawnByEmail(Email email) {
-		return jpaAccountRepository.findByEmailAndStatusOrderByWithdrwanAtDesc(email, AccountStatus.WITHDRAWN);
+		return jpaAccountRepository.findByEmailAndStatusOrderByWithdrawnAtDesc(email, AccountStatus.WITHDRAWN);
 	}
 
 	@Override

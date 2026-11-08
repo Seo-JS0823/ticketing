@@ -17,7 +17,7 @@ public interface JpaAccountRepository extends JpaRepository<Account, UUID> {
 
 	Optional<Account> findByEmailAndStatusNot(Email email, AccountStatus status);
 	
-	List<Account> findByEmailAndStatusOrderByWithdrwanAtDesc(Email email, AccountStatus status);
+	List<Account> findByEmailAndStatusOrderByWithdrawnAtDesc(Email email, AccountStatus status);
 	
 	@Query(
 			"""
