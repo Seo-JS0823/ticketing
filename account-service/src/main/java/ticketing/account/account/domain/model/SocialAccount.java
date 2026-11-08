@@ -55,6 +55,7 @@ public class SocialAccount {
 		this.provider = provider;
 		this.providerUserId =providerUserId;
 		this.linkedAt = now;
+		this.updatedAt = now;
 	}
 	
 	boolean isActive() {

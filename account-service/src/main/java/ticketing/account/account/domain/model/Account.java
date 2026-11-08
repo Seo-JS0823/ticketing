@@ -125,21 +125,21 @@ public class Account {
 	}
 	
 	// 이메일 변경
-	public void changeEmail(String newEmail) {
+	public void changeEmail(Email email, Instant emailVerifiedAt) {
 		validateActive();
 		
-		Email email = Email.of(newEmail);
-		
 		this.email = email;
+		this.emailVerifiedAt = emailVerifiedAt;
 	}
 	
 	// 닉네임&태그 변경
-	public void changePublicIdentifier(String nickname, String tag) {
+	public void changePublicIdentifier(String nickname, String tag, Instant now) {
 		validateActive();
 		
 		PublicIdentifier publicIdentifier = PublicIdentifier.of(nickname, tag);
 		
 		this.publicIdentifier = publicIdentifier;
+		this.updatedAt = now;
 	}
 	
 	// 비밀번호 변경
