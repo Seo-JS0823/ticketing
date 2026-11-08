@@ -13,12 +13,12 @@ public enum AccountInvalidErrorCode implements DomainErrorCode {
 	// Value Object Pattern Error
 	INVALID_NICKNAME_PATTERN(
 			HttpStatus.BAD_REQUEST,
-			"닉네임은 한글, 영문, 숫자 조합으로 1~8 자리여야 합니다."
+			"닉네임은 한글, 영문, 숫자 조합으로 2~10자여야 합니다."
 	),
 	
 	INVALID_TAG_PATTERN(
 			HttpStatus.BAD_REQUEST,
-			"태그는 영문, 숫자 조합으로 1~8 자리여야 합니다."
+			"태그는 한글, 영문, 숫자 조합으로 4~8자여야 합니다."
 	),
 	
 	INVALID_EMAIL_PATTERN(
