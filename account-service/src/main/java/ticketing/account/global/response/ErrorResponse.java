@@ -1,55 +1,38 @@
 package ticketing.account.global.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.List;
 
-import org.springframework.web.context.request.WebRequest;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
-import lombok.Builder;
-import lombok.Getter;
 import ticketing.account.global.exception.DomainErrorCode;
 
-@Getter
-public class ErrorResponse {
-
-	private LocalDateTime timestamp;
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record ErrorResponse(
+		Instant timestamp,
+		int status,
+		String path,
+		String error,
+		String code,
+		String message,
+		List<FieldViolation> errors
+) {
 	
-	private int status;
+	public record FieldViolation(String field, String reason) {}
 	
-	private String path;
-	
-	private String error;
-	
-	private String code;
-	
-	private String message;
-	
-	@Builder
-	private ErrorResponse(int status, String path, String error, String code, String message) {
-		this.timestamp = LocalDateTime.now();
-		this.status = status;
-		this.path = path;
-		this.error = error;
-		this.code = code;
-		this.message = message;
+	public static ErrorResponse of(DomainErrorCode errorCode, String path, Instant timestamp) {
+		return of(errorCode, path, timestamp, null);
 	}
 	
-	public static ErrorResponse of(DomainErrorCode errorCode, WebRequest request) {
-		return ErrorResponse.builder()
-				.status(errorCode.getStatus().value())
-				.error(errorCode.getStatus().getReasonPhrase())
-				.code(errorCode.getCode())
-				.message(errorCode.getMessage())
-				.path(extractPath(request))
-				.build();
-	}
-	
-	private static String extractPath(WebRequest request) {
-		String description = request.getDescription(false);
-		
-		if (description.startsWith("uri=")) {
-			return description.substring(4);
-		}
-		
-		return description;
+	public static ErrorResponse of(DomainErrorCode errorCode, String path, Instant timestamp, List<FieldViolation> errors) {
+		return new ErrorResponse(
+				timestamp,
+				errorCode.getStatus().value(),
+				path,
+				errorCode.getStatus().getReasonPhrase(),
+				errorCode.getCode(),
+				errorCode.getMessage(),
+				errors
+		);
 	}
 }
