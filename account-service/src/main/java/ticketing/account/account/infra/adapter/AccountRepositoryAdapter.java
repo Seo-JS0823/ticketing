@@ -1,5 +1,6 @@
 package ticketing.account.account.infra.adapter;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,8 +32,8 @@ public class AccountRepositoryAdapter implements AccountRepository {
 	}
 
 	@Override
-	public Optional<Account> findByEmail(Email email) {
-		return jpaAccountRepository.findByEmail(email);
+	public Optional<Account> findNonWithdrawnByEmail(Email email) {
+		return jpaAccountRepository.findByEmailAndStatusNot(email, AccountStatus.WITHDRAWN);
 	}
 
 	@Override
@@ -41,14 +42,21 @@ public class AccountRepositoryAdapter implements AccountRepository {
 	}
 
 	@Override
-	public boolean existsActiveByEmail(Email email) {
-		return jpaAccountRepository.existsByEmailAndStatus(email, AccountStatus.ACTIVE);
+	public List<Account> findWithdrawnByEmail(Email email) {
+		return jpaAccountRepository.findByEmailAndStatusOrderByWithdrwanAtDesc(email, AccountStatus.WITHDRAWN);
+	}
+
+	@Override
+	public boolean existsNonWithdrawnByEmail(Email email) {
+		return jpaAccountRepository.existsByEmailAndStatusNot(email, AccountStatus.WITHDRAWN);
 	}
 
 	@Override
 	public boolean existsByPublicIdentifier(PublicIdentifier publicIdentifier) {
-		return jpaAccountRepository.existsByPublicIdentifier(publicIdentifier);
+		return jpaAccountRepository.existsByPublicIdentifierIgnoreCase(
+				publicIdentifier.getNickname(),
+				publicIdentifier.getTag()
+		);
 	}
-	
 	
 }

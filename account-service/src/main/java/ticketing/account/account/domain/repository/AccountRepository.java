@@ -1,5 +1,6 @@
 package ticketing.account.account.domain.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,11 +15,13 @@ public interface AccountRepository {
 	
 	Optional<Account> findById(UUID accountId);
 	
-	Optional<Account> findByEmail(Email email);
+	Optional<Account> findNonWithdrawnByEmail(Email email);
+	
+	List<Account> findWithdrawnByEmail(Email email);
 	
 	Optional<Account> findBySocialAccount(SocialProvider provider, String providerUserId);
 	
-	boolean existsActiveByEmail(Email email);
+	boolean existsNonWithdrawnByEmail(Email email);
 	
 	boolean existsByPublicIdentifier(PublicIdentifier publicIdentifier);
 }

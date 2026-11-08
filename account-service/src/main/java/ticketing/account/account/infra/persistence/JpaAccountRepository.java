@@ -1,5 +1,6 @@
 package ticketing.account.account.infra.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,20 +11,22 @@ import org.springframework.data.repository.query.Param;
 import ticketing.account.account.domain.model.Account;
 import ticketing.account.account.domain.model.AccountStatus;
 import ticketing.account.account.domain.model.Email;
-import ticketing.account.account.domain.model.PublicIdentifier;
 import ticketing.account.account.domain.model.SocialProvider;
 
 public interface JpaAccountRepository extends JpaRepository<Account, UUID> {
 
-	Optional<Account> findByEmail(Email email);
-
+	Optional<Account> findByEmailAndStatusNot(Email email, AccountStatus status);
+	
+	List<Account> findByEmailAndStatusOrderByWithdrwanAtDesc(Email email, AccountStatus status);
+	
 	@Query(
 			"""
-				SELECT a
-				FROM Account a
-				JOIN a.socialAccounts s
-				WHERE s.provider = :provider
-					AND s.providerUserId = :providerUserId
+			SELECT a
+			FROM Account a
+			JOIN a.socialAccounts s
+			WHERE s.provider = :provider
+				AND s.providerUserId = :providerUserId
+				AND s.deletedAt IS NULL
 			"""
 	)
 	Optional<Account> findBySocialAccount(
@@ -31,8 +34,19 @@ public interface JpaAccountRepository extends JpaRepository<Account, UUID> {
 			@Param("providerUserId") String providerUserId
 	);
 
-	boolean existsByEmailAndStatus(Email email, AccountStatus status);
-
-	boolean existsByPublicIdentifier(PublicIdentifier publicIdentifier);
-
+	boolean existsByEmailAndStatusNot(Email email, AccountStatus status);
+	
+	@Query(
+			"""
+			SELECT COUNT(a) > 0
+			FROM Account a
+			WHERE LOWER(a.publicIdentifier.nickname) = LOWER(:nickname)
+				AND LOWER(a.publicIdentifier.tag) = LOWER(:tag)
+			"""
+	)
+	boolean existsByPublicIdentifierIgnoreCase(
+			@Param("nickname") String nickname,
+			@Param("tag") String tag
+	);
+	
 }
