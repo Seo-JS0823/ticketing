@@ -17,7 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 @Component
 @RequiredArgsConstructor
-public class SecurityErrorResponseWirter {
+public class SecurityErrorResponseWriter {
 
 	private final JsonMapper jsonMapper;
 	
