@@ -23,7 +23,7 @@ import ticketing.account.account.domain.exception.EmailVerificationException;
 import ticketing.account.global.exception.CommonErrorCode;
 
 @Entity
-@Table(name = "email_verification")
+@Table(name = "email_verifications")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class EmailVerification {
