@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import ticketing.account.account.application.EmailVerificationResult;
+import ticketing.account.account.application.result.EmailVerificationResult;
 import ticketing.account.account.application.service.EmailVerificationService;
 import ticketing.account.account.presentation.request.EmailVerificationCreateRequest;
 import ticketing.account.global.response.GlobalResponse;

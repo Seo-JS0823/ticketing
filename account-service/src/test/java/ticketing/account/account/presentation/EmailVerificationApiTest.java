@@ -27,10 +27,10 @@ import org.testcontainers.utility.TestcontainersConfiguration;
 
 import com.jayway.jsonpath.JsonPath;
 
-import ticketing.account.account.application.VerificationCrypto;
-import ticketing.account.account.application.VerificationMailRequested;
-import ticketing.account.account.application.VerificationMailSender;
 import ticketing.account.account.application.VerificationMailType;
+import ticketing.account.account.application.dto.VerificationMailRequested;
+import ticketing.account.account.application.port.VerificationMailSender;
+import ticketing.account.account.application.util.VerificationCrypto;
 import ticketing.account.account.domain.model.Account;
 import ticketing.account.account.domain.model.Email;
 import ticketing.account.account.domain.model.EmailVerification;

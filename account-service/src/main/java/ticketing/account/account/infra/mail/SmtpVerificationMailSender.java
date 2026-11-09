@@ -5,10 +5,10 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
-import ticketing.account.account.application.EmailVerificationProperties;
-import ticketing.account.account.application.VerificationMailRequested;
-import ticketing.account.account.application.VerificationMailSender;
 import ticketing.account.account.application.VerificationMailType;
+import ticketing.account.account.application.dto.VerificationMailRequested;
+import ticketing.account.account.application.port.VerificationMailSender;
+import ticketing.account.account.application.properties.EmailVerificationProperties;
 
 @Component
 @RequiredArgsConstructor
