@@ -44,6 +44,11 @@ public enum CommonErrorCode implements DomainErrorCode {
 			"서버 오류가 발생했습니다."
 	),
 	
+	TOO_MANY_REQUESTS(
+			HttpStatus.TOO_MANY_REQUESTS,
+			"잠시 후 다시 시도해 주세요."
+	),
+	
 	;
 	private final HttpStatus status;
 	
