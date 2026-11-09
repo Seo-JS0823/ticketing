@@ -1,6 +1,8 @@
 package ticketing.account.account.presentation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -72,6 +74,60 @@ public class EmailVerificationApiTest {
 		assertThat(saved.getStatus()).isEqualTo(EmailVerificationStatus.PENDING);
 		assertThat(saved.getCodeHash()).isEqualTo(verificationCrypto.hash(mail.code()));
 		assertThat(saved.getCodeHash()).hasSize(64);
+	}
+	
+	@Test
+	@DisplayName("가입된 이메일로 가입 인증을 요청해도 같은 응답을 주고 안내 메일만 보낸다")
+	void emailVerificationAPI_test2() throws Exception {
+		saveAccount("registered@example.com", "REG1");
+		
+		findVerification(request("registered@example.com", "SIGN_UP"));
+		
+		assertThat(captureMail().type()).isEqualTo(VerificationMailType.ALREADY_REGISTERED);
+	}
+	
+	@Test
+	@DisplayName("없는 계정의 비밀번호 재설정은 요청 행만 만들고 메일을 보내지 않는다.")
+	void emailVerificationAPI_test3() throws Exception {
+		EmailVerification saved = findVerification(request("nobody@example.com", "PASSWORD_RESET"));
+		
+		verify(verificationMailSender, after(500).never()).send(any());
+		
+		assertThat(saved.getAccountId()).isNull();
+	}
+	
+	@Test
+	@DisplayName("가입된 계정의 비밀번호 재설정은 계정에 귀속되고 인증 코드를 보낸다")
+	void emailVerificationAPI_test4() throws Exception {
+		Account account = saveAccount("reset@example.com", "RES1");
+		
+		EmailVerification saved = findVerification(request("RESET@example.com", "PASSWORD_RESET"));
+		
+		assertThat(captureMail().type()).isEqualTo(VerificationMailType.CODE);
+		assertThat(saved.getAccountId()).isEqualTo(account.getId());
+	}
+	
+	@Test
+	@DisplayName("인증 목적이 없으면 INVALID_REQUEST")
+	void emailVerificationAPI_test5() throws Exception {
+		request("user@example.com", "UNKNOWN")
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+	
+	@Test
+	@DisplayName("이메일이 없으면 EMAIL_REQUIRED")
+	void emailVerificationAPI_test6() throws Exception {
+		mockMvc.perform(post("/api/v1/email-verifications")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(
+						"""
+						{"purpose":"SIGN_UP"}
+						"""
+				))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("EMAIL_REQUIRED"));
+		
 	}
 	
 	private ResultActions request(String email, String purpose) throws Exception {
