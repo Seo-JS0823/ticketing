@@ -1,5 +1,7 @@
 package ticketing.account.account.domain.model;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -16,6 +18,9 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import ticketing.account.account.domain.exception.EmailVerificationErrorCode;
+import ticketing.account.account.domain.exception.EmailVerificationException;
+import ticketing.account.global.exception.CommonErrorCode;
 
 @Entity
 @Table(name = "email_verification")
@@ -92,5 +97,66 @@ public class EmailVerification {
 		verification.createdAt = now;
 		
 		return verification;
+	}
+	
+	// 실패 시 상태 변경이 저장되어야 함
+	// 서비스는 이 예외로 롤백하지 않아야 함
+	public void verify(String submittedCodeHash, String newTokenHash, Instant now) {
+		validatePending();
+		
+		if (!now.isBefore(this.expiresAt)) {
+			this.status = EmailVerificationStatus.EXPIRED;
+			throw new EmailVerificationException(EmailVerificationErrorCode.VERIFICATION_EXPIRED);
+		}
+		
+		if (!matchesCode(submittedCodeHash)) {
+			recordFailedAttempt();
+		}
+		
+		this.status = EmailVerificationStatus.VERIFIED;
+		this.verifiedAt = now;
+		this.tokenHash = newTokenHash;
+		this.tokenExpiresAt = now.plus(TOKEN_TTL);
+	}
+	
+	// 재발송 전 기존 요청 무효화
+	public void cancelForResend(Instant now) {
+		validatePending();
+		
+		if (now.isBefore(this.createdAt.plus(RESEND_INTERNAL))) {
+			throw new EmailVerificationException(CommonErrorCode.TOO_MANY_REQUESTS);
+		}
+		
+		this.status = EmailVerificationStatus.CANCELLED;
+	}
+	
+	public void cancel() {
+		validatePending();
+		
+		this.status = EmailVerificationStatus.CANCELLED;
+	}
+	
+	private void validatePending() {
+		if (this.status != EmailVerificationStatus.PENDING) {
+			throw new EmailVerificationException(EmailVerificationErrorCode.VERIFICATION_NOT_PENDING);
+		}
+	}
+	
+	private boolean matchesCode(String submittedCodeHash) {
+		return MessageDigest.isEqual(
+				this.codeHash.getBytes(StandardCharsets.UTF_8),
+				submittedCodeHash.getBytes(StandardCharsets.UTF_8)
+		);
+	}
+	
+	private void recordFailedAttempt() {
+		this.failedAttempts++;
+		
+		if (this.failedAttempts >= MAX_FAILED_ATTEMPTS) {
+			this.status = EmailVerificationStatus.CANCELLED;
+			throw new EmailVerificationException(EmailVerificationErrorCode.VERIFICATION_ATTEMPTS_EXCEEDED);
+		}
+		
+		throw new EmailVerificationException(EmailVerificationErrorCode.INVALID_VERIFICATION_CODE);
 	}
 }
