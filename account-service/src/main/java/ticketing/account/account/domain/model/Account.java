@@ -125,11 +125,12 @@ public class Account {
 	}
 	
 	// 이메일 변경
-	public void changeEmail(Email email, Instant emailVerifiedAt) {
+	public void changeEmail(Email email, Instant now) {
 		validateActive();
 		
 		this.email = email;
-		this.emailVerifiedAt = emailVerifiedAt;
+		this.emailVerifiedAt = now;
+		this.updatedAt = now;
 	}
 	
 	// 닉네임&태그 변경
