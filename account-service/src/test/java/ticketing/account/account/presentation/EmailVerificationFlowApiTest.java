@@ -134,7 +134,7 @@ public class EmailVerificationFlowApiTest {
 	
 	@Test
 	@DisplayName("동시에 틀린 코드를 보내도 실패 횟수를 정확히 카운트")
-	void emailVerification_Flow_tets5() throws Exception {
+	void emailVerification_Flow_test5() throws Exception {
 		UUID id = savePending("verify-race@example.com", Instant.now());
 		
 		int requests = 10;
