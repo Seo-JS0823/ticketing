@@ -27,6 +27,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -45,6 +46,10 @@ import ticketing.account.account.infra.persistence.JpaEmailVerificationRepositor
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
+@Sql(
+		scripts = "/sql/clean-database.sql",
+		executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+)
 public class EmailVerificationFlowApiTest {
 
 	private static final String BASE_URL = "/api/v1/email-verifications";
