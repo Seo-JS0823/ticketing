@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.Instant;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,6 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
@@ -65,6 +68,16 @@ public class EmailVerificationApiTest {
 	
 	@MockitoBean
 	private VerificationMailSender verificationMailSender;
+	
+	@Autowired
+	private RedisConnectionFactory redisConnectionFactory;
+	
+	@BeforeEach
+	void clearRedis() {
+		try (RedisConnection connection = redisConnectionFactory.getConnection()) {
+			connection.serverCommands().flushDb();
+		}
+	}
 	
 	@Test
 	@DisplayName("미가입 이메일로 가입 인증을 요청하면 코드를 해시로 저장하고 메일을 보낸다.")

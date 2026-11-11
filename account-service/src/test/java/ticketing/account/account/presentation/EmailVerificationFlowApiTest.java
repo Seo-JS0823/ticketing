@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -25,6 +26,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
@@ -71,6 +74,16 @@ public class EmailVerificationFlowApiTest {
 	
 	@MockitoBean
 	private VerificationMailSender verificationMailSender;
+	
+	@Autowired
+	private RedisConnectionFactory redisConnectionFactory;
+	
+	@BeforeEach
+	void clearRedis() {
+		try (RedisConnection connection = redisConnectionFactory.getConnection()) {
+			connection.serverCommands().flushDb();
+		}
+	}
 	
 	@Test
 	@DisplayName("맞는 코드로 검증하면 토큰을 발급하고 해시만 저장")
