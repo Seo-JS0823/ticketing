@@ -40,10 +40,13 @@ spring:
           auth: ${MAIL_SMTP_AUTH:false}
           ssl:
             enable: ${MAIL_SMTP_SSL:false}
-          connectionTimeout: 5000
+          connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
-          
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}          
 app:
   email-verification:
     hmac-secret: ${EMAIL_VERIFICATION_HMAC_SECRET:}
