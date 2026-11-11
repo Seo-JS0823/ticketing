@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import ticketing.account.account.application.VerificationMailType;
 import ticketing.account.account.application.dto.Delivery;
 import ticketing.account.account.application.dto.VerificationMailRequested;
+import ticketing.account.account.application.port.VerificationSendLimiter;
 import ticketing.account.account.application.result.EmailVerificationResult;
 import ticketing.account.account.application.result.EmailVerificationTokenResult;
 import ticketing.account.account.application.util.VerificationCrypto;
@@ -34,6 +35,8 @@ public class EmailVerificationService {
 	
 	private final VerificationCrypto verificationCrypto;
 	
+	private final VerificationSendLimiter verificationSendLimiter;
+	
 	private final ApplicationEventPublisher eventPublisher;
 	
 	private final Clock clock;
@@ -45,47 +48,19 @@ public class EmailVerificationService {
 	@Transactional
 	public EmailVerificationResult request(
 			String rawEmail,
-			EmailVerificationPurpose purpose
+			EmailVerificationPurpose purpose,
+			String clientIp
 	) {
-		Email email = Email.of(rawEmail);
-		
-		Delivery delivery = resolveDelivery(email, purpose);
-		
-		String code = verificationCrypto.generateCode();
-		
-		EmailVerification verification = emailVerificationRepository.save(
-				EmailVerification.request(
-						delivery.accountId(),
-						email,
-						purpose,
-						verificationCrypto.hash(code),
-						Instant.now(clock)
-				)
-		);
-		
-		if (delivery.mailType() != VerificationMailType.NONE) {
-			eventPublisher.publishEvent(new VerificationMailRequested(
-					verification.getId(),
-					email.getEmail(),
-					purpose,
-					delivery.mailType(),
-					code
-			));
-		}
-		
-		return new EmailVerificationResult(
-				verification.getId(),
-				verification.getExpiresAt()
-		);
+		return createVerification(Email.of(rawEmail), purpose, clientIp);
 	}
 	
 	@Transactional
-	public EmailVerificationResult resend(UUID verificationId) {
+	public EmailVerificationResult resend(UUID verificationId, String clientIp) {
 		EmailVerification previous = findForUpdate(verificationId);
 		
 		previous.cancelForResend(Instant.now(clock));
 		
-		return createVerification(previous.getEmail(), previous.getPurpose());
+		return createVerification(previous.getEmail(), previous.getPurpose(), clientIp);
 	}
 	
 	@Transactional(noRollbackFor = EmailVerificationException.class)
@@ -108,13 +83,17 @@ public class EmailVerificationService {
 		findForUpdate(verificationId).cancel();
 	}
 	
-	private EmailVerification findForUpdate(UUID verificationId) {
-		return emailVerificationRepository.findByIdForUpdate(verificationId)
-				.orElseThrow(() -> new EmailVerificationException(EmailVerificationErrorCode.VERIFICATION_NOT_FOUND));
-	}
-	
-	private EmailVerificationResult createVerification(Email email, EmailVerificationPurpose purpose) {
+	private EmailVerificationResult createVerification(
+			Email email,
+			EmailVerificationPurpose purpose,
+			String clientIp
+	) {
 		Delivery delivery = resolveDelivery(email, purpose);
+		
+		verificationSendLimiter.acquire(email, clientIp);
+		
+		emailVerificationRepository.findPendingForUpdate(email, purpose)
+				.forEach(EmailVerification::cancel);
 		
 		String code = verificationCrypto.generateCode();
 		
@@ -142,6 +121,11 @@ public class EmailVerificationService {
 				verification.getId(),
 				verification.getExpiresAt()
 		);
+	}
+	
+	private EmailVerification findForUpdate(UUID verificationId) {
+		return emailVerificationRepository.findByIdForUpdate(verificationId)
+				.orElseThrow(() -> new EmailVerificationException(EmailVerificationErrorCode.VERIFICATION_NOT_FOUND));
 	}
 	
 	private Delivery resolveDelivery(Email email, EmailVerificationPurpose purpose) {

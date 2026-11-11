@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import ticketing.account.account.application.result.EmailVerificationResult;
@@ -33,11 +34,16 @@ public class EmailVerificationController {
 	@PostMapping
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	public GlobalResponse<EmailVerificationResult> request(
-			@Valid @RequestBody EmailVerificationCreateRequest request
+			@Valid @RequestBody EmailVerificationCreateRequest request,
+			HttpServletRequest servletRequest
 	) {
 		
 		return GlobalResponse.of(
-				emailVerificationService.request(request.email(), request.purpose())
+				emailVerificationService.request(
+						request.email(),
+						request.purpose(),
+						servletRequest.getRemoteAddr()
+				)
 		);
 	}
 	
@@ -47,10 +53,11 @@ public class EmailVerificationController {
 	@PostMapping("/{id}/resend")
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	public GlobalResponse<EmailVerificationResult> resend(
-			@PathVariable("id") UUID id
+			@PathVariable("id") UUID id,
+			HttpServletRequest servletRequest
 	) {
 		return GlobalResponse.of(
-				emailVerificationService.resend(id)
+				emailVerificationService.resend(id, servletRequest.getRemoteAddr())
 		);
 	}
 	
