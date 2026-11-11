@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import ticketing.account.account.domain.exception.EmailVerificationErrorCode;
 import ticketing.account.account.domain.exception.EmailVerificationException;
-import ticketing.account.global.exception.CommonErrorCode;
 import ticketing.account.global.exception.DomainErrorCode;
+import ticketing.account.global.exception.RateLimitExceededException;
 
 public class EmailVerificationTest {
 
@@ -113,10 +113,15 @@ public class EmailVerificationTest {
 	void emailVerification_test7() {
 		EmailVerification verification = newVerification();
 		
-		assertErrorCode(
-				() -> verification.cancelForResend(NOW.plusSeconds(59)),
-				CommonErrorCode.TOO_MANY_REQUESTS
-		);
+//		assertErrorCode(
+//				() -> verification.cancelForResend(NOW.plusSeconds(59)),
+//				CommonErrorCode.TOO_MANY_REQUESTS
+//		);
+		
+		assertThatThrownBy(() -> verification.cancelForResend(NOW.plusSeconds(59)))
+				.isInstanceOf(RateLimitExceededException.class)
+				.extracting(e -> ((RateLimitExceededException) e).getRetryAfterSeconds())
+				.isEqualTo(1L);
 		
 		assertThatCode(() -> verification.cancelForResend(NOW.plusSeconds(60)))
 				.doesNotThrowAnyException();

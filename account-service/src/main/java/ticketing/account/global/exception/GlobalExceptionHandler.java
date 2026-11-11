@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -39,6 +40,22 @@ public class GlobalExceptionHandler {
 		log.warn("[{}] 도메인 예외 발생 errorCode={}", serviceName, e.getErrorCode().getCode());
 		
 		return toResponse(e.getErrorCode(), request, null);
+	}
+	
+	@ExceptionHandler(RateLimitExceededException.class)
+	public ResponseEntity<ErrorResponse> handleRateLimitExceeded(RateLimitExceededException e, HttpServletRequest request) {
+		log.warn("[{}] 요청 한도 초과 path={}", serviceName, request.getRequestURI());
+		
+		ErrorResponse body = ErrorResponse.of(
+				e.getErrorCode(),
+				request.getRequestURI(),
+				Instant.now(clock)
+		);
+		
+		return ResponseEntity
+				.status(e.getErrorCode().getStatus())
+				.header(HttpHeaders.RETRY_AFTER, String.valueOf(e.getRetryAfterSeconds()))
+				.body(body);
 	}
 	
 	// @Valid @RequestBody 검증 실패

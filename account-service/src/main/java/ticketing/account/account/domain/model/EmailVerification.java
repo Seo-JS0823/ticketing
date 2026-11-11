@@ -20,7 +20,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import ticketing.account.account.domain.exception.EmailVerificationErrorCode;
 import ticketing.account.account.domain.exception.EmailVerificationException;
-import ticketing.account.global.exception.CommonErrorCode;
+import ticketing.account.global.exception.RateLimitExceededException;
 
 @Entity
 @Table(name = "email_verifications")
@@ -32,7 +32,7 @@ public class EmailVerification {
 	
 	private static final Duration TOKEN_TTL = Duration.ofMinutes(10);
 	
-	private static final Duration RESEND_INTERNAL = Duration.ofSeconds(60);
+	private static final Duration RESEND_INTERVAL = Duration.ofSeconds(60);
 	
 	private static final int MAX_FAILED_ATTEMPTS = 5;
 	
@@ -123,8 +123,16 @@ public class EmailVerification {
 	public void cancelForResend(Instant now) {
 		validatePending();
 		
-		if (now.isBefore(this.createdAt.plus(RESEND_INTERNAL))) {
-			throw new EmailVerificationException(CommonErrorCode.TOO_MANY_REQUESTS);
+//		if (now.isBefore(this.createdAt.plus(RESEND_INTERVAL))) {
+//			throw new EmailVerificationException(CommonErrorCode.TOO_MANY_REQUESTS);
+//		}
+//		
+//		this.status = EmailVerificationStatus.CANCELLED;
+		
+		Instant resendableAt = this.createdAt.plus(RESEND_INTERVAL);
+		
+		if (now.isBefore(resendableAt)) {
+			throw new RateLimitExceededException(Duration.between(now, resendableAt));
 		}
 		
 		this.status = EmailVerificationStatus.CANCELLED;
