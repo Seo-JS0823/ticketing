@@ -41,4 +41,14 @@ public interface JpaEmailVerificationRepository extends JpaRepository<EmailVerif
 			@Param("purpose") EmailVerificationPurpose purpose,
 			@Param("status") EmailVerificationStatus status
 	);
+	
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query(
+			"""
+			SELECT v
+			FROM EmailVerification v
+			WHERE v.tokenHash = :tokenHash
+			"""
+	)
+	Optional<EmailVerification> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
 }

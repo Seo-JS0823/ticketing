@@ -35,6 +35,11 @@ public enum EmailVerificationErrorCode implements DomainErrorCode {
 			"인증 코드 시도 횟수를 초과했습니다."
 	),
 	
+	INVALID_VERIFICATION_TOKEN(
+			HttpStatus.BAD_REQUEST,
+			"인증 완료 토큰이 올바르지 않거나 만료되었습니다."
+	),
+	
 	;
 	private final HttpStatus status;
 	
