@@ -2,3 +2,6 @@ app:
   email-verification:
     hmac-secret: test-only-hmac-secret-0123456789abcdef
     mail-from: no-replay@example.com
+  jwt:
+    private-key: classpath:jwt/test-private.pem
+    public-key: classpath:jwt/test-public.pem
