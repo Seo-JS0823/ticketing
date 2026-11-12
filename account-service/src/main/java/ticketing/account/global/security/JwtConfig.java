@@ -27,7 +27,7 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 public class JwtConfig {
 
 	@Bean
-	JwtEncoder jwtEncoder(JwtProperties properties) {
+	public JwtEncoder jwtEncoder(JwtProperties properties) {
 		RSAKey rsaKey = new RSAKey.Builder(readPublicKey(properties.publicKey()))
 				.privateKey(readPrivateKey(properties.privateKey()))
 				.keyID(properties.keyId())
@@ -37,7 +37,7 @@ public class JwtConfig {
 	}
 	
 	@Bean
-	JwtDecoder jwtDecoder(JwtProperties properties) {
+	public JwtDecoder jwtDecoder(JwtProperties properties) {
 		NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(readPublicKey(properties.publicKey()))
 				.signatureAlgorithm(SignatureAlgorithm.RS256)
 				.build();
