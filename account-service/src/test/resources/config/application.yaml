@@ -1,0 +1,4 @@
+app:
+  email-verification:
+    hmac-secret: test-only-hmac-secret-0123456789abcdef
+    mail-from: no-replay@example.com

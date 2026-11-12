@@ -1,4 +1,15 @@
 services:
+  redis:
+    image: redis:7
+    container_name: ticketing-redis
+    ports:
+      - "6379:6379"
+  mailpit:
+    image: axllent/mailpit
+    container_name: ticketing-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
   postgres:
     image: postgres:17
     container_name: ticketing-postgres
