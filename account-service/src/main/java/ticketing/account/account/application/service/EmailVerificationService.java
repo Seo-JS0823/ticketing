@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import ticketing.account.account.application.dto.VerificationMailRequested;
 import ticketing.account.account.application.port.VerificationSendLimiter;
 import ticketing.account.account.application.result.EmailVerificationResult;
 import ticketing.account.account.application.result.EmailVerificationTokenResult;
+import ticketing.account.account.application.result.VerifiedEmail;
 import ticketing.account.account.application.util.VerificationCrypto;
 import ticketing.account.account.domain.exception.EmailVerificationErrorCode;
 import ticketing.account.account.domain.exception.EmailVerificationException;
@@ -81,6 +83,25 @@ public class EmailVerificationService {
 	@Transactional
 	public void cancel(UUID verificationId) {
 		findForUpdate(verificationId).cancel();
+	}
+	
+	@Transactional(propagation = Propagation.MANDATORY)
+	public VerifiedEmail consumeToken(String token, EmailVerificationPurpose purpose) {
+		if (token == null || token.isBlank()) {
+			throw new EmailVerificationException(EmailVerificationErrorCode.INVALID_VERIFICATION_TOKEN);
+		}
+		
+		EmailVerification verification = emailVerificationRepository
+				.findByTokenHashForUpdate(verificationCrypto.hash(token))
+				.orElseThrow(() -> new EmailVerificationException(EmailVerificationErrorCode.INVALID_VERIFICATION_TOKEN));
+		
+		verification.consume(purpose, Instant.now(clock));
+		
+		return new VerifiedEmail(
+				verification.getEmail(),
+				verification.getAccountId(),
+				verification.getVerifiedAt()
+		);
 	}
 	
 	private EmailVerificationResult createVerification(
