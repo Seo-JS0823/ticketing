@@ -51,3 +51,11 @@ app:
   email-verification:
     hmac-secret: ${EMAIL_VERIFICATION_HMAC_SECRET:}
     mail-from: ${MAIL_FROM:}
+  security:
+    bcrypt-strength: ${BCRYPT_STRENGTH:10}
+  jwt:
+    issuer: ${JWT_ISSUER:ticketing-account}
+    key-id: ${JWT_KEY_ID:account-key-1}
+    access-token-ttl: 15m
+    private-key: ${JWT_PRIVATE_KEY_LOCATION:file:../keys/jwt-private.pem}
+    public-key: ${JWT_PUBLIC_KEY_LOCATION:file:../keys/jwt-public.pem}

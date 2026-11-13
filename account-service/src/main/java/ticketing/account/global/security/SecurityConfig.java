@@ -7,7 +7,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 
 import lombok.RequiredArgsConstructor;
 import ticketing.account.global.exception.CommonErrorCode;
@@ -21,15 +26,25 @@ public class SecurityConfig {
 	
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		AuthenticationEntryPoint authenticationEntryPoint = authenticationEntryPoint();
+		
+		AccessDeniedHandler accessDeniedHandler = accessDeniedHandler();
+		
 		http
 				.csrf(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.logout(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.oauth2ResourceServer(oauth2 -> oauth2
+						.jwt(jwt -> jwt
+								.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+								.authenticationEntryPoint(authenticationEntryPoint)
+								.accessDeniedHandler(accessDeniedHandler)
+				)
 				.exceptionHandling(exception -> exception
-						.authenticationEntryPoint((request, response, e) -> errorResponseWriter.write(request, response, CommonErrorCode.UNAUTHORIZED))
-						.accessDeniedHandler((request, response, e) -> errorResponseWriter.write(request, response, CommonErrorCode.FORBIDDEN))
+						.authenticationEntryPoint(authenticationEntryPoint)
+						.accessDeniedHandler(accessDeniedHandler)
 				)
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/error", "/actuator/health").permitAll()
@@ -61,5 +76,32 @@ public class SecurityConfig {
 		;
 		
 		return http.build();
+	}
+	
+	private JwtAuthenticationConverter jwtAuthenticationConverter() {
+		JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
+		
+		authoritiesConverter.setAuthoritiesClaimName(AccessTokenClaims.ROLE);
+		authoritiesConverter.setAuthorityPrefix("ROLE_");
+		
+		JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+		converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+		
+		return converter;
+	}
+	
+	private AuthenticationEntryPoint authenticationEntryPoint() {
+		BearerTokenAuthenticationEntryPoint bearerEntryPoint = new BearerTokenAuthenticationEntryPoint();
+		
+		return (request, response, e) -> {
+			bearerEntryPoint.commence(request, response, e);
+			errorResponseWriter.write(request, response, CommonErrorCode.UNAUTHORIZED);
+		};
+	}
+	
+	private AccessDeniedHandler accessDeniedHandler() {
+		return (request, response, e) -> {
+			errorResponseWriter.write(request, response, CommonErrorCode.FORBIDDEN);
+		};
 	}
 }

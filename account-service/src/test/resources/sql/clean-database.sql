@@ -1,5 +1,6 @@
 -- 테스트 전 데이터 초기화
 TRUNCATE TABLE
+  account.refresh_tokens,
   account.email_verifications,
   account.social_accounts,
   account.account_credentials,

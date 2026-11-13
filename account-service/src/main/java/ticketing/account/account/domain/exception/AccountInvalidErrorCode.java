@@ -36,7 +36,13 @@ public enum AccountInvalidErrorCode implements DomainErrorCode {
 	EMAIL_TOO_LONG(
 			HttpStatus.BAD_REQUEST,
 			"이메일은 320자 이내여야 합니다."
-	);
+	),
+	
+	INVALID_PASSWORD_PATTERN(
+			HttpStatus.BAD_REQUEST,
+			"비밀번호는 8~20자이고 영문, 숫자, 특수문자(!@#$%^&*)를 모두 포함해야 합니다."
+	),
+	
 	;
 	private final HttpStatus status;
 	

@@ -39,3 +39,6 @@ out/
 ### ENV ###
 *.env
 .env
+
+### JWT KEYS ###
+/keys/

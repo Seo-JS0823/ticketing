@@ -39,4 +39,9 @@ public class EmailVerificationRepositoryAdapter implements EmailVerificationRepo
 		);
 	}
 
+	@Override
+	public Optional<EmailVerification> findByTokenHashForUpdate(String tokenHash) {
+		return jpaEmailVerificationRepository.findByTokenHashForUpdate(tokenHash);
+	}
+
 }

@@ -119,6 +119,19 @@ public class EmailVerification {
 		this.tokenExpiresAt = now.plus(TOKEN_TTL);
 	}
 	
+	public void consume(EmailVerificationPurpose expectedPurpose, Instant now) {
+		boolean usable = this.status == EmailVerificationStatus.VERIFIED
+				&& this.consumedAt == null
+				&& this.purpose == expectedPurpose
+				&& now.isBefore(this.tokenExpiresAt);
+		
+		if (!usable) {
+			throw new EmailVerificationException(EmailVerificationErrorCode.INVALID_VERIFICATION_TOKEN);
+		}
+		
+		this.consumedAt = now;
+	}
+	
 	// 재발송 전 기존 요청 무효화
 	public void cancelForResend(Instant now) {
 		validatePending();

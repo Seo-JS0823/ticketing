@@ -17,4 +17,6 @@ public interface EmailVerificationRepository {
 	Optional<EmailVerification> findByIdForUpdate(UUID verificationId);
 	
 	List<EmailVerification> findPendingForUpdate(Email email, EmailVerificationPurpose purpose);
+	
+	Optional<EmailVerification> findByTokenHashForUpdate(String tokenHash);
 }
