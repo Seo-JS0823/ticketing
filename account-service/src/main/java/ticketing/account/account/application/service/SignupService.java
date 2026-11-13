@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.random.RandomGenerator;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import ticketing.account.account.application.port.AccessTokenIssuer;
@@ -49,6 +50,7 @@ public class SignupService {
 	 * - 가입에 실패하면 토큰 소모 X
 	 * - 입력값 검증과 BCrypt 해시는 토큰 행 잠그기 전에 끝남
 	 */
+	@Transactional
 	public AuthResult signupWithEmail(String password, String nickname, String verificationToken) {
 		PasswordPolicy.validate(password);
 		PublicIdentifier publicIdentifier = generatePublicIdentifier(nickname);

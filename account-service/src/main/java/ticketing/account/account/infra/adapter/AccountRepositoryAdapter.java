@@ -23,7 +23,7 @@ import ticketing.account.account.infra.persistence.JpaAccountRepository;
 @RequiredArgsConstructor
 public class AccountRepositoryAdapter implements AccountRepository {
 
-	private static final String EMAIL_UNIQUE_INDEX = "uk_acounts_email_not_withdrwan";
+	private static final String EMAIL_UNIQUE_INDEX = "uk_accounts_email_not_withdrawn";
 	
 	private final JpaAccountRepository jpaAccountRepository;
 
