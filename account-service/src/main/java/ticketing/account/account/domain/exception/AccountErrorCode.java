@@ -35,6 +35,11 @@ public enum AccountErrorCode implements DomainErrorCode {
 			"이미 사용 중인 이메일입니다."
 	),
 	
+	SOCIAL_IDENTITY_IN_USE(
+			HttpStatus.CONFLICT,
+			"이미 다른 계정에 연결된 소셜 계정입니다."
+	),
+	
 	;
 	private final HttpStatus status;
 	
