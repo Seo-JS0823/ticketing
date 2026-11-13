@@ -13,6 +13,8 @@ public interface AccountRepository {
 
 	Account save(Account account);
 	
+	Account saveAndFlush(Account account);
+	
 	Optional<Account> findById(UUID accountId);
 	
 	Optional<Account> findNonWithdrawnByEmail(Email email);
