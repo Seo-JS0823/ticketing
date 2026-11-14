@@ -5,3 +5,8 @@ app:
   jwt:
     private-key: classpath:jwt/test-private.pem
     public-key: classpath:jwt/test-public.pem
+  kakao:
+    client-id: test-client-id
+    client-secret: test-client-secret
+    app-id: 123456
+    allowed-redirect-uris: http://localhost:3000/oauth/kakao

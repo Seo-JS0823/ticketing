@@ -14,6 +14,7 @@ import ticketing.account.account.application.result.AuthResult;
 import ticketing.account.account.application.service.SignupService;
 import ticketing.account.account.presentation.request.ClientType;
 import ticketing.account.account.presentation.request.EmailSignupRequest;
+import ticketing.account.account.presentation.request.KakaoSignupRequest;
 import ticketing.account.account.presentation.response.RefreshTokenCookie;
 import ticketing.account.account.presentation.response.TokenResponse;
 import ticketing.account.global.response.GlobalResponse;
@@ -25,6 +26,7 @@ public class AccountController {
 
 	private final SignupService signupService;
 	
+	// 이메일 회원가입
 	@PostMapping
 	public ResponseEntity<GlobalResponse<TokenResponse>> signup(
 			@RequestBody EmailSignupRequest request,
@@ -36,6 +38,25 @@ public class AccountController {
 				request.verificationToken()
 		);
 		
+		return created(result, clientType);
+	}
+	
+	// 카카오 회원가입 완료
+	@PostMapping("/kakao")
+	public ResponseEntity<GlobalResponse<TokenResponse>> signupWithKakao(
+			@RequestBody KakaoSignupRequest request,
+			@RequestHeader(name = "X-Client-Type", defaultValue = "WEB") ClientType clientType
+	) {
+		AuthResult result = signupService.signupWithKakao(
+				request.signupToken(),
+				request.verificationToken(),
+				request.nickname()
+		);
+		
+		return created(result, clientType);
+	}
+	
+	private ResponseEntity<GlobalResponse<TokenResponse>> created(AuthResult result, ClientType clientType) {
 		ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
 		
 		if (clientType == ClientType.WEB) {
@@ -45,6 +66,7 @@ public class AccountController {
 			);
 		}
 		
-		return response.body(GlobalResponse.of(TokenResponse.of(result, clientType == ClientType.APP)));
+		return response
+				.body(GlobalResponse.of(TokenResponse.of(result, clientType == ClientType.APP)));
 	}
 }

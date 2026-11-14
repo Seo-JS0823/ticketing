@@ -25,6 +25,8 @@ public class AccountRepositoryAdapter implements AccountRepository {
 
 	private static final String EMAIL_UNIQUE_INDEX = "uk_accounts_email_not_withdrawn";
 	
+	private static final String SOCIAL_IDENTITY_UNIQUE_INDEX = "uk_social_accounts_provider_user_active";
+	
 	private final JpaAccountRepository jpaAccountRepository;
 
 	@Override
@@ -39,6 +41,10 @@ public class AccountRepositoryAdapter implements AccountRepository {
 		} catch (DataIntegrityViolationException e) {
 			if (isViolated(e, EMAIL_UNIQUE_INDEX)) {
 				throw new AccountException(AccountErrorCode.EMAIL_ALREADY_IN_USE);				
+			}
+			
+			if (isViolated(e, SOCIAL_IDENTITY_UNIQUE_INDEX)) {
+				throw new AccountException(AccountErrorCode.SOCIAL_IDENTITY_IN_USE);
 			}
 			
 			throw e;
