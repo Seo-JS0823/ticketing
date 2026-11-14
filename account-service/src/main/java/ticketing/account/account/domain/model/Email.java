@@ -27,7 +27,7 @@ public class Email {
   	validateEmail(email);
   	
   	// 소문자 정규화. 지역별 언어 특성에 상관없이 Unicode 기준 = Locale.ROOT Parameter
-  	this.email = email.toLowerCase(Locale.ROOT);
+  	this.email = email.toLowerCase(Locale.ROOT).trim();
   }
   
   public static Email of(String email) {
