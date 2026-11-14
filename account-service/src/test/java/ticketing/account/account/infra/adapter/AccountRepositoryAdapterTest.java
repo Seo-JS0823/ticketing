@@ -1,5 +1,6 @@
 package ticketing.account.account.infra.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
@@ -54,6 +55,28 @@ public class AccountRepositoryAdapterTest {
 				() -> accountRepository.saveAndFlush(kakaoAccount("second@example.com", "SECOND01")),
 				AccountErrorCode.SOCIAL_IDENTITY_IN_USE
 		);
+	}
+	
+	@Test
+	@DisplayName("트랜잭션 밖에서 이메일로 조회한 계정의 비밀번호 해시를 읽을 수 있다")
+	void accountRepositoryAdapter_test3() {
+		Account account = account("login@example.com", "LOGIN001");
+		account.registerPassword("password-hash", Instant.now());
+		accountRepository.save(account);
+		
+		Account found = accountRepository.findNonWithdrawnByEmail(Email.of("login@example.com")).orElseThrow();
+		
+		assertThat(found.getCredential().getPasswordHash()).isEqualTo("password-hash");
+	}
+	
+	@Test
+	@DisplayName("소셜 전용 계정은 이메일로 조회해도 비밀번호가 없다")
+	void accountRepositoryAdapter_test4() {
+		accountRepository.save(kakaoAccount("social@example.com", "SOCIAL01"));
+		
+		Account found = accountRepository.findNonWithdrawnByEmail(Email.of("social@example.com")).orElseThrow();
+		
+		assertThat(found.getCredential()).isNull();
 	}
 	
 	private Account account(String email, String tag) {

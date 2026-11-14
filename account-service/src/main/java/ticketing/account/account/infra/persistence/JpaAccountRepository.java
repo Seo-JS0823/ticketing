@@ -15,9 +15,34 @@ import ticketing.account.account.domain.model.SocialProvider;
 
 public interface JpaAccountRepository extends JpaRepository<Account, UUID> {
 
-	Optional<Account> findByEmailAndStatusNot(Email email, AccountStatus status);
+	@Query(
+			"""
+			SELECT a
+			FROM Account a
+			LEFT JOIN FETCH a.credential
+			WHERE a.email = :email
+				AND a.status <> :status
+			"""
+	)
+	Optional<Account> findWithCredentialByEmailAndStatusNot(
+			@Param("email") Email email,
+			@Param("status") AccountStatus status
+	);
 	
-	List<Account> findByEmailAndStatusOrderByWithdrawnAtDesc(Email email, AccountStatus status);
+	@Query(
+			"""
+			SELECT a
+			FROM Account a
+			LEFT JOIN FETCH a.credential
+			WHERE a.email = :email
+				AND a.status = :status
+			ORDER BY a.withdrawnAt DESC
+			"""
+	)
+	List<Account> findAllWithCredentialByEmailAndStatusOrderByWithdrawnAtDesc(
+			Email email,
+			AccountStatus status
+	);
 	
 	@Query(
 			"""
