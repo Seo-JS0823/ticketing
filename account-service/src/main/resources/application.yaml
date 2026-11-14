@@ -48,6 +48,15 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}          
 app:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    app-id: ${KAKAO_APP_ID:}
+    allowed-redirect-uris: ${KAKAO_ALLOWED_REDIRECT_URIS:http://localhost:3000/oauth/kakao}
+    auth-base-url: https://kauth.kakao.com
+    api-base-url: https://kapi.kakao.com
+    connect-timeout: 3s
+    read-timeout: 5s
   email-verification:
     hmac-secret: ${EMAIL_VERIFICATION_HMAC_SECRET:}
     mail-from: ${MAIL_FROM:}
