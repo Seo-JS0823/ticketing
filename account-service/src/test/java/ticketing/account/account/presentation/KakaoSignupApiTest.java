@@ -25,18 +25,18 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.support.TransactionTemplate;
 
 import ticketing.account.TestcontainersConfiguration;
-import ticketing.account.account.application.service.SocialSignupTokenService;
-import ticketing.account.account.application.util.VerificationCrypto;
 import ticketing.account.account.domain.model.Account;
 import ticketing.account.account.domain.model.Email;
-import ticketing.account.account.domain.model.EmailVerification;
-import ticketing.account.account.domain.model.EmailVerificationPurpose;
 import ticketing.account.account.domain.model.PublicIdentifier;
 import ticketing.account.account.domain.model.SocialProvider;
-import ticketing.account.account.domain.model.SocialSignupToken;
 import ticketing.account.account.domain.repository.AccountRepository;
-import ticketing.account.account.infra.persistence.JpaEmailVerificationRepository;
-import ticketing.account.account.infra.persistence.JpaSocialSignupTokenRepository;
+import ticketing.account.auth.application.service.SocialSignupTokenService;
+import ticketing.account.auth.domain.model.SocialSignupToken;
+import ticketing.account.auth.infra.persistence.JpaSocialSignupTokenRepository;
+import ticketing.account.global.crypto.TokenCrypto;
+import ticketing.account.verification.domain.model.EmailVerification;
+import ticketing.account.verification.domain.model.EmailVerificationPurpose;
+import ticketing.account.verification.infra.persistence.JpaEmailVerificationRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -67,7 +67,7 @@ public class KakaoSignupApiTest {
 	private JpaEmailVerificationRepository jpaEmailVerificationRepository;
 	
 	@Autowired
-	private VerificationCrypto verificationCrypto;
+	private TokenCrypto tokenCrypto;
 	
 	@Autowired
 	private TransactionTemplate transactionTemplate;
@@ -221,7 +221,7 @@ public class KakaoSignupApiTest {
 	}
 	
 	private SocialSignupToken findSignupToken(String signupToken) {
-		String tokenHash = verificationCrypto.hash(signupToken);
+		String tokenHash = tokenCrypto.hash(signupToken);
 		
 		return jpaSocialSignupTokenRepository.findAll().stream()
 				.filter(token -> token.getTokenHash().equals(tokenHash))
@@ -237,11 +237,11 @@ public class KakaoSignupApiTest {
 				null,
 				Email.of(email),
 				EmailVerificationPurpose.SIGN_UP,
-				verificationCrypto.hash(CODE),
+				tokenCrypto.hash(CODE),
 				verifiedAt.minusSeconds(30)
 		);
 		
-		verification.verify(verificationCrypto.hash(CODE), verificationCrypto.hash(token), verifiedAt);
+		verification.verify(tokenCrypto.hash(CODE), tokenCrypto.hash(token), verifiedAt);
 		
 		return jpaEmailVerificationRepository.save(verification);
 	}

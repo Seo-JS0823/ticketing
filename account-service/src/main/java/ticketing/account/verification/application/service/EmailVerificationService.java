@@ -1,0 +1,169 @@
+package ticketing.account.verification.application.service;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.UUID;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
+import ticketing.account.account.domain.model.Email;
+import ticketing.account.account.domain.repository.AccountRepository;
+import ticketing.account.global.crypto.TokenCrypto;
+import ticketing.account.global.exception.CommonErrorCode;
+import ticketing.account.verification.application.dto.Delivery;
+import ticketing.account.verification.application.dto.VerificationMailType;
+import ticketing.account.verification.application.event.VerificationMailRequested;
+import ticketing.account.verification.application.port.VerificationSendLimiter;
+import ticketing.account.verification.application.result.EmailVerificationResult;
+import ticketing.account.verification.application.result.EmailVerificationTokenResult;
+import ticketing.account.verification.application.result.VerifiedEmail;
+import ticketing.account.verification.domain.exception.EmailVerificationErrorCode;
+import ticketing.account.verification.domain.exception.EmailVerificationException;
+import ticketing.account.verification.domain.model.EmailVerification;
+import ticketing.account.verification.domain.model.EmailVerificationPurpose;
+import ticketing.account.verification.domain.repository.EmailVerificationRepository;
+
+@Service
+@RequiredArgsConstructor
+public class EmailVerificationService {
+
+	private final EmailVerificationRepository emailVerificationRepository;
+	
+	private final AccountRepository accountRepository;
+	
+	private final TokenCrypto tokenCrypto;
+	
+	private final VerificationSendLimiter verificationSendLimiter;
+	
+	private final ApplicationEventPublisher eventPublisher;
+	
+	private final Clock clock;
+	
+	/*
+	 * 계정 존재 여부 상관 X
+	 * 메일 발송 여부와 관계없이 요청 행 생성
+	 */
+	@Transactional
+	public EmailVerificationResult request(
+			String rawEmail,
+			EmailVerificationPurpose purpose,
+			String clientIp
+	) {
+		return createVerification(Email.of(rawEmail), purpose, clientIp);
+	}
+	
+	@Transactional
+	public EmailVerificationResult resend(UUID verificationId, String clientIp) {
+		EmailVerification previous = findForUpdate(verificationId);
+		
+		previous.cancelForResend(Instant.now(clock));
+		
+		return createVerification(previous.getEmail(), previous.getPurpose(), clientIp);
+	}
+	
+	@Transactional(noRollbackFor = EmailVerificationException.class)
+	public EmailVerificationTokenResult verify(UUID verificationId, String code) {
+		EmailVerification verification = findForUpdate(verificationId);
+		
+		String token = tokenCrypto.generateToken();
+		
+		verification.verify(
+				tokenCrypto.hash(code),
+				tokenCrypto.hash(token),
+				Instant.now(clock)
+		);
+		
+		return new EmailVerificationTokenResult(token, verification.getTokenExpiresAt());
+	}
+	
+	@Transactional
+	public void cancel(UUID verificationId) {
+		findForUpdate(verificationId).cancel();
+	}
+	
+	@Transactional(propagation = Propagation.MANDATORY)
+	public VerifiedEmail consumeToken(String token, EmailVerificationPurpose purpose) {
+		if (token == null || token.isBlank()) {
+			throw new EmailVerificationException(EmailVerificationErrorCode.INVALID_VERIFICATION_TOKEN);
+		}
+		
+		EmailVerification verification = emailVerificationRepository
+				.findByTokenHashForUpdate(tokenCrypto.hash(token))
+				.orElseThrow(() -> new EmailVerificationException(EmailVerificationErrorCode.INVALID_VERIFICATION_TOKEN));
+		
+		verification.consume(purpose, Instant.now(clock));
+		
+		return new VerifiedEmail(
+				verification.getEmail(),
+				verification.getAccountId(),
+				verification.getVerifiedAt()
+		);
+	}
+	
+	private EmailVerificationResult createVerification(
+			Email email,
+			EmailVerificationPurpose purpose,
+			String clientIp
+	) {
+		Delivery delivery = resolveDelivery(email, purpose);
+		
+		verificationSendLimiter.acquire(email, clientIp);
+		
+		emailVerificationRepository.findPendingForUpdate(email, purpose)
+				.forEach(EmailVerification::cancel);
+		
+		String code = tokenCrypto.generateCode();
+		
+		EmailVerification verification = emailVerificationRepository.save(
+				EmailVerification.request(
+						delivery.accountId(),
+						email,
+						purpose,
+						tokenCrypto.hash(code),
+						Instant.now(clock)
+				)
+		);
+		
+		if (delivery.mailType() != VerificationMailType.NONE) {
+			eventPublisher.publishEvent(new VerificationMailRequested(
+					verification.getId(),
+					email.getEmail(),
+					purpose,
+					delivery.mailType(),
+					code
+			));
+		}
+		
+		return new EmailVerificationResult(
+				verification.getId(),
+				verification.getExpiresAt()
+		);
+	}
+	
+	private EmailVerification findForUpdate(UUID verificationId) {
+		return emailVerificationRepository.findByIdForUpdate(verificationId)
+				.orElseThrow(() -> new EmailVerificationException(EmailVerificationErrorCode.VERIFICATION_NOT_FOUND));
+	}
+	
+	private Delivery resolveDelivery(Email email, EmailVerificationPurpose purpose) {
+		return switch (purpose) {
+			case SIGN_UP -> accountRepository.existsNonWithdrawnByEmail(email)
+					? new Delivery(null, VerificationMailType.ALREADY_REGISTERED)
+					: new Delivery(null, VerificationMailType.CODE);
+	
+			case PASSWORD_RESET -> accountRepository.findNonWithdrawnByEmail(email)
+					.map(account -> new Delivery(account.getId(), VerificationMailType.CODE))
+					.orElseGet(() -> new Delivery(null, VerificationMailType.NONE));
+			
+			// TODO: CHANGE_EMAIL, SENSITIVE_ACTION 로그인 구현 후 추가
+			
+			// TODO: 복구 목적은 복구 API 구현 후 추가
+			
+			default -> throw new EmailVerificationException(CommonErrorCode.INVALID_REQUEST);
+		};
+	}
+}

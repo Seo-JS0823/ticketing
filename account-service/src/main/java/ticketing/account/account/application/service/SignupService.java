@@ -10,16 +10,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import ticketing.account.account.application.port.PasswordHasher;
-import ticketing.account.account.application.result.AuthResult;
-import ticketing.account.account.application.result.SocialIdentity;
-import ticketing.account.account.application.result.VerifiedEmail;
 import ticketing.account.account.domain.exception.AccountErrorCode;
 import ticketing.account.account.domain.exception.AccountException;
 import ticketing.account.account.domain.model.Account;
-import ticketing.account.account.domain.model.EmailVerificationPurpose;
 import ticketing.account.account.domain.model.PasswordPolicy;
 import ticketing.account.account.domain.model.PublicIdentifier;
 import ticketing.account.account.domain.repository.AccountRepository;
+import ticketing.account.auth.application.result.AuthResult;
+import ticketing.account.auth.application.result.SocialIdentity;
+import ticketing.account.auth.application.service.SocialSignupTokenService;
+import ticketing.account.auth.application.service.TokenService;
+import ticketing.account.verification.application.result.VerifiedEmail;
+import ticketing.account.verification.application.service.EmailVerificationService;
+import ticketing.account.verification.domain.model.EmailVerificationPurpose;
 
 @Service
 @RequiredArgsConstructor
@@ -37,7 +40,7 @@ public class SignupService {
 	
 	private final PasswordHasher passwordHasher;
 	
-	private final AuthTokenService authTokenService;
+	private final TokenService tokenService;
 	
 	private final Clock clock;
 	
@@ -107,7 +110,7 @@ public class SignupService {
 	private AuthResult saveAndIssueTokens(Account account) {
 		Account saved = accountRepository.saveAndFlush(account);
 		
-		return authTokenService.issue(saved);
+		return tokenService.issue(saved);
 	}
 	
 	private PublicIdentifier generatePublicIdentifier(String nickname) {

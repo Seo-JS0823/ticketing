@@ -27,15 +27,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ticketing.account.TestcontainersConfiguration;
 import ticketing.account.account.application.port.PasswordHasher;
-import ticketing.account.account.application.util.VerificationCrypto;
 import ticketing.account.account.domain.model.Account;
 import ticketing.account.account.domain.model.AccountStatus;
 import ticketing.account.account.domain.model.Email;
-import ticketing.account.account.domain.model.EmailVerification;
-import ticketing.account.account.domain.model.EmailVerificationPurpose;
 import ticketing.account.account.domain.model.PublicIdentifier;
 import ticketing.account.account.domain.repository.AccountRepository;
-import ticketing.account.account.infra.persistence.JpaEmailVerificationRepository;
+import ticketing.account.global.crypto.TokenCrypto;
+import ticketing.account.verification.domain.model.EmailVerification;
+import ticketing.account.verification.domain.model.EmailVerificationPurpose;
+import ticketing.account.verification.infra.persistence.JpaEmailVerificationRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -60,7 +60,7 @@ public class SignupApiTest {
 	private JpaEmailVerificationRepository jpaEmailVerificationRepository;
 	
 	@Autowired
-	private VerificationCrypto verificationCrypto;
+	private TokenCrypto tokenCrypto;
 	
 	@Autowired
 	private PasswordHasher passwordHasher;
@@ -238,11 +238,11 @@ public class SignupApiTest {
 				null,
 				Email.of(email),
 				purpose,
-				verificationCrypto.hash(CODE),
+				tokenCrypto.hash(CODE),
 				verifiedAt.minusSeconds(30)
 		);
 		
-		verification.verify(verificationCrypto.hash(CODE), verificationCrypto.hash(token), verifiedAt);
+		verification.verify(tokenCrypto.hash(CODE), tokenCrypto.hash(token), verifiedAt);
 		
 		return jpaEmailVerificationRepository.save(verification);
 	}

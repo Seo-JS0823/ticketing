@@ -20,14 +20,15 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.jdbc.Sql;
 
 import ticketing.account.TestcontainersConfiguration;
-import ticketing.account.account.application.util.VerificationCrypto;
 import ticketing.account.account.domain.exception.AccountErrorCode;
 import ticketing.account.account.domain.exception.AccountException;
 import ticketing.account.account.domain.model.Email;
-import ticketing.account.account.domain.model.EmailVerification;
-import ticketing.account.account.domain.model.EmailVerificationPurpose;
 import ticketing.account.account.domain.model.SocialProvider;
-import ticketing.account.account.infra.persistence.JpaEmailVerificationRepository;
+import ticketing.account.auth.application.service.SocialSignupTokenService;
+import ticketing.account.global.crypto.TokenCrypto;
+import ticketing.account.verification.domain.model.EmailVerification;
+import ticketing.account.verification.domain.model.EmailVerificationPurpose;
+import ticketing.account.verification.infra.persistence.JpaEmailVerificationRepository;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -49,7 +50,7 @@ public class SignupServiceTest {
 	private JpaEmailVerificationRepository jpaEmailVerificationRepository;
 	
 	@Autowired
-	private VerificationCrypto verificationCrypto;
+	private TokenCrypto tokenCrypto;
 	
 	@Test
 	@DisplayName("같은 이메일로 동시에 가입해도 한 번만 성공하고 나머지는 EMAIL_ALREADY_IN_USE")
@@ -124,11 +125,11 @@ public class SignupServiceTest {
 				null,
 				Email.of(email),
 				EmailVerificationPurpose.SIGN_UP,
-				verificationCrypto.hash(CODE),
+				tokenCrypto.hash(CODE),
 				verifiedAt.minusSeconds(30)
 		);
 		
-		verification.verify(verificationCrypto.hash(CODE), verificationCrypto.hash(token), verifiedAt);
+		verification.verify(tokenCrypto.hash(CODE), tokenCrypto.hash(token), verifiedAt);
 		
 		return jpaEmailVerificationRepository.save(verification);
 	}
