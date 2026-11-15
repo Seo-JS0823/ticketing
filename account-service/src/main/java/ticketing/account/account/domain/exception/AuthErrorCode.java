@@ -30,7 +30,7 @@ public enum AuthErrorCode implements DomainErrorCode {
 			"탈퇴한 계정입니다. 계정 복구를 진행해 주세요."
 	),
 	
-	INVALID_CREDENTIAL(
+	INVALID_CREDENTIALS(
 			HttpStatus.UNAUTHORIZED,
 			"이메일 또는 비밀번호가 일치하지 않습니다."
 	),

@@ -40,8 +40,8 @@ public interface JpaAccountRepository extends JpaRepository<Account, UUID> {
 			"""
 	)
 	List<Account> findAllWithCredentialByEmailAndStatusOrderByWithdrawnAtDesc(
-			Email email,
-			AccountStatus status
+			@Param("email") Email email,
+			@Param("status") AccountStatus status
 	);
 	
 	@Query(

@@ -37,4 +37,12 @@ public class EmailTest {
 		.extracting(e -> ((AccountException) e).getErrorCode())
 		.isEqualTo(AccountInvalidErrorCode.INVALID_EMAIL_PATTERN);
 	}
+	
+	@Test
+	@DisplayName("앞뒤 공백은 지우고 저장")
+	void email_test4() {
+		Email email = Email.of("   User@Example.com   ");
+		
+		assertThat(email.getEmail()).isEqualTo("user@example.com");
+	}
 }
