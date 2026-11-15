@@ -58,7 +58,7 @@ public class AccountRepositoryAdapter implements AccountRepository {
 
 	@Override
 	public Optional<Account> findNonWithdrawnByEmail(Email email) {
-		return jpaAccountRepository.findByEmailAndStatusNot(email, AccountStatus.WITHDRAWN);
+		return jpaAccountRepository.findWithCredentialByEmailAndStatusNot(email, AccountStatus.WITHDRAWN);
 	}
 
 	@Override
@@ -68,7 +68,7 @@ public class AccountRepositoryAdapter implements AccountRepository {
 
 	@Override
 	public List<Account> findWithdrawnByEmail(Email email) {
-		return jpaAccountRepository.findByEmailAndStatusOrderByWithdrawnAtDesc(email, AccountStatus.WITHDRAWN);
+		return jpaAccountRepository.findAllWithCredentialByEmailAndStatusOrderByWithdrawnAtDesc(email, AccountStatus.WITHDRAWN);
 	}
 
 	@Override

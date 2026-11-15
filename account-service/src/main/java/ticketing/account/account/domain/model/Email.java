@@ -24,10 +24,14 @@ public class Email {
   private final String email;
   
   private Email(String email) {
-  	validateEmail(email);
+  	String stripped = email == null
+  			? null
+  			: email.strip();
+  	
+  	validateEmail(stripped);
   	
   	// 소문자 정규화. 지역별 언어 특성에 상관없이 Unicode 기준 = Locale.ROOT Parameter
-  	this.email = email.toLowerCase(Locale.ROOT);
+  	this.email = email.toLowerCase(Locale.ROOT).trim();
   }
   
   public static Email of(String email) {
