@@ -10,13 +10,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
-import ticketing.account.account.application.result.AuthResult;
 import ticketing.account.account.application.service.SignupService;
-import ticketing.account.account.presentation.request.ClientType;
 import ticketing.account.account.presentation.request.EmailSignupRequest;
 import ticketing.account.account.presentation.request.KakaoSignupRequest;
-import ticketing.account.account.presentation.response.RefreshTokenCookie;
-import ticketing.account.account.presentation.response.TokenResponse;
+import ticketing.account.auth.application.result.AuthResult;
+import ticketing.account.auth.presentation.request.ClientType;
+import ticketing.account.auth.presentation.response.RefreshTokenCookie;
+import ticketing.account.auth.presentation.response.TokenResponse;
 import ticketing.account.global.response.GlobalResponse;
 
 @RestController
