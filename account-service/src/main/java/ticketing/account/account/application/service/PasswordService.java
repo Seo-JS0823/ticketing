@@ -9,8 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import ticketing.account.account.application.port.PasswordHasher;
-import ticketing.account.account.domain.exception.AccountErrorCode;
-import ticketing.account.account.domain.exception.AccountException;
 import ticketing.account.account.domain.model.Account;
 import ticketing.account.account.domain.model.AccountStatus;
 import ticketing.account.account.domain.model.PasswordPolicy;
@@ -37,29 +35,19 @@ public class PasswordService {
 	
 	private final AccountService accountService;
 	
+	private final ReauthenticationService reauthenticationService;
+	
 	private final TokenService tokenService;
 	
 	private final LoginAttemptLimiter loginAttemptLimiter;
 	
 	private final Clock clock;
-	
+
 	@Transactional
 	public void changePassword(UUID accountId, String currentPassword, String newPassword, String clientIp) {
 		Account account = accountService.getLoginAccount(accountId);
 		
-		String email = account.getEmail().getEmail();
-		
-		loginAttemptLimiter.checkAllowed(email, clientIp);
-		
-		if (!account.hasPassword()) {
-			throw new AccountException(AccountErrorCode.CREDENTIAL_NOT_REGISTERED);
-		}
-		
-		if (!matchesCurrentPassword(account, currentPassword)) {
-			loginAttemptLimiter.recordFailure(email, clientIp);
-			
-			throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
-		}
+		reauthenticationService.verifyPassword(account, currentPassword, clientIp);
 		
 		PasswordPolicy.validate(newPassword);
 		
@@ -71,8 +59,39 @@ public class PasswordService {
 		
 		tokenService.revokeAll(account.getId());
 		
-		loginAttemptLimiter.recordSuccess(email, clientIp);
+		reauthenticationService.recordPasswordSuccess(account, clientIp);
 	}
+	
+//	@Transactional
+//	public void changePassword(UUID accountId, String currentPassword, String newPassword, String clientIp) {
+//		Account account = accountService.getLoginAccount(accountId);
+//		
+//		String email = account.getEmail().getEmail();
+//		
+//		loginAttemptLimiter.checkAllowed(email, clientIp);
+//		
+//		if (!account.hasPassword()) {
+//			throw new AccountException(AccountErrorCode.CREDENTIAL_NOT_REGISTERED);
+//		}
+//		
+//		if (!matchesCurrentPassword(account, currentPassword)) {
+//			loginAttemptLimiter.recordFailure(email, clientIp);
+//			
+//			throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+//		}
+//		
+//		PasswordPolicy.validate(newPassword);
+//		
+//		if (newPassword.equals(currentPassword)) {
+//			throw new AuthException(AuthErrorCode.NEW_PASSWORD_SAME_AS_CURRENT);
+//		}
+//		
+//		account.changePassword(passwordHasher.hash(newPassword), Instant.now(clock));
+//		
+//		tokenService.revokeAll(account.getId());
+//		
+//		loginAttemptLimiter.recordSuccess(email, clientIp);
+//	}
 	
 	@Transactional
 	public void resetPassword(String verificationToken, String newPassword, String clientIp) {
@@ -109,34 +128,13 @@ public class PasswordService {
 		
 		String passwordHash = passwordHasher.hash(password);
 		
-		VerifiedEmail verified = emailVerificationService.consumeToken(
-				verificationToken,
-				EmailVerificationPurpose.SENSITIVE_ACTION
-		);
+		VerifiedEmail verified = reauthenticationService.consumeSensitiveActionToken(verificationToken);
 		
 		Account account = accountService.getLoginAccount(accountId);
 		
-		validateTokenOwner(account, verified);
+		reauthenticationService.validateTokenOwner(account, verified);
 		
 		account.registerPassword(passwordHash, Instant.now(clock));
-	}
-	
-	private boolean matchesCurrentPassword(Account account, String currentPassword) {
-		if (currentPassword == null || currentPassword.isBlank()) {
-			return false;
-		}
-		
-		return passwordHasher.matches(currentPassword, account.getCredential().getPasswordHash());
-	}
-	
-	private void validateTokenOwner(Account account, VerifiedEmail verified) {
-		boolean sameAccount = account.getId().equals(verified.accountId());
-		
-		boolean sameEmail = account.getEmail().equals(verified.email());
-		
-		if (!sameAccount || !sameEmail) {
-			throw invalidToken();
-		}
 	}
 	
 	private Account findTarget(VerifiedEmail verified) {

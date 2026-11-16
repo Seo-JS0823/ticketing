@@ -1,5 +1,6 @@
 package ticketing.account.account.domain.model;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -165,6 +166,15 @@ public class Account {
 		}
 		
 		changePassword(passwordHash, now);
+	}
+	
+	public void withdraw(Instant now, Duration recoveryPeriod) {
+		validateNotWithdrawn();
+		
+		this.status = AccountStatus.WITHDRAWN;
+		this.withdrawnAt = now;
+		this.recoveryExpiresAt = now.plus(recoveryPeriod);
+		this.updatedAt = now;
 	}
 	
 	public boolean hasPassword() {
