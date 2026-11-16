@@ -155,6 +155,18 @@ public class Account {
 		this.updatedAt = now;
 	}
 	
+	// 비밀번호 재설정 (비밀번호를 잊은 사용자)
+	// 비밀번호가 있으면 변경
+	// 비밀번호가 없으면 (소셜 전용 계정) 새로 등록
+	public void resetPassword(String passwordHash, Instant now) {
+		if (this.credential == null) {
+			registerPassword(passwordHash, now);
+			return;
+		}
+		
+		changePassword(passwordHash, now);
+	}
+	
 	// 업데이트 전 활성 계정 검사
 	private void validateActive() {
 		if (this.status != AccountStatus.ACTIVE) {
