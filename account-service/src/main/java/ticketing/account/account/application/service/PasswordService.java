@@ -33,7 +33,7 @@ public class PasswordService {
 	
 	private final PasswordHasher passwordHasher;
 	
-	private final AccountService accountService;
+	private final LoginAccountReader loginAccountReader;
 	
 	private final ReauthenticationService reauthenticationService;
 	
@@ -45,7 +45,7 @@ public class PasswordService {
 
 	@Transactional
 	public void changePassword(UUID accountId, String currentPassword, String newPassword, String clientIp) {
-		Account account = accountService.getLoginAccount(accountId);
+		Account account = loginAccountReader.getLoginAccount(accountId);
 		
 		reauthenticationService.verifyPassword(account, currentPassword, clientIp);
 		
@@ -130,7 +130,7 @@ public class PasswordService {
 		
 		VerifiedEmail verified = reauthenticationService.consumeSensitiveActionToken(verificationToken);
 		
-		Account account = accountService.getLoginAccount(accountId);
+		Account account = loginAccountReader.getLoginAccount(accountId);
 		
 		reauthenticationService.validateTokenOwner(account, verified);
 		

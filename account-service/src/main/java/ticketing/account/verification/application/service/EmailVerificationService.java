@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
-import ticketing.account.account.application.service.AccountService;
+import ticketing.account.account.application.service.LoginAccountReader;
 import ticketing.account.account.domain.model.Account;
 import ticketing.account.account.domain.model.Email;
 import ticketing.account.account.domain.repository.AccountRepository;
@@ -37,7 +37,7 @@ public class EmailVerificationService {
 	
 	private final AccountRepository accountRepository;
 	
-	private final AccountService accountService;
+	private final LoginAccountReader loginAccountReader;
 	
 	private final TokenCrypto tokenCrypto;
 	
@@ -186,7 +186,7 @@ public class EmailVerificationService {
 	
 	private Delivery resolveDelivery(String rawEmail, UUID accountId, EmailVerificationPurpose purpose) {
 		if (purpose == EmailVerificationPurpose.SENSITIVE_ACTION) {
-			Account account = accountService.getLoginAccount(accountId);
+			Account account = loginAccountReader.getLoginAccount(accountId);
 			
 			return new Delivery(account.getEmail(), account.getId(), VerificationMailType.CODE);
 		}
