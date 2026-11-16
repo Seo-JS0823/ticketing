@@ -1,7 +1,12 @@
 package ticketing.account.auth.presentation.controller;
 
+import java.util.UUID;
+
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -103,6 +108,23 @@ public class AuthController {
 		);
 		
 		return TokenResponses.of(HttpStatus.OK, result, delivery);
+	}
+	
+	@PostMapping("/logout")
+	public ResponseEntity<Void> logout(
+			@AuthenticationPrincipal Jwt jwt,
+			@CookieValue(name = RefreshTokenCookie.NAME, required = false) String cookieToken,
+			@RequestBody(required = false) RefreshTokenRequest request
+	) {
+		String bodyToken = request == null
+				? null
+				: request.refreshToken();
+		
+		tokenService.logout(UUID.fromString(jwt.getSubject()), cookieToken, bodyToken);
+		
+		return ResponseEntity.noContent()
+				.header(HttpHeaders.SET_COOKIE, RefreshTokenCookie.expired().toString())
+				.build();
 	}
 	
 	private RefreshTokenDelivery deliveryOf(String cookieToken, String bodyToken) {

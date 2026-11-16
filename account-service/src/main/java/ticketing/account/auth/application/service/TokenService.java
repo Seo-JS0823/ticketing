@@ -133,6 +133,35 @@ public class TokenService {
 		);
 	}
 	
+	@Transactional
+	public void logout(UUID accountId, String... refreshTokens) {
+		for (String refreshToken : refreshTokens) {
+			revokeOwnSession(accountId, refreshToken);
+		}
+	}
+	
+	private void revokeOwnSession(UUID accountId, String refreshToken) {
+		if (refreshToken == null || refreshToken.isBlank()) {
+			return;
+		}
+		
+		refreshTokenRepository.findByTokenHash(tokenCrypto.hash(refreshToken))
+		.ifPresent(token -> {
+			if (!token.getAccountId().equals(accountId)) {
+				log.warn(
+						"[{}] 다른 사용자의 Refresh Token으로 로그아웃을 요청해 폐기하지 않았습니다. accountId={}, sessionId={}",
+						serviceName,
+						accountId,
+						token.getSessionId()
+				);
+				
+				return;
+			}
+			
+			refreshTokenRepository.revokeSession(token.getSessionId(), Instant.now(clock));
+		});
+	}
+	
 	private AuthException revokeAndReject(UUID sessionId, AuthErrorCode errorCode) {
 		refreshTokenRepository.revokeSession(sessionId, Instant.now(clock));
 		
