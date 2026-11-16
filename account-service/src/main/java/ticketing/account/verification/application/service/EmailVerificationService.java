@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
+import ticketing.account.account.application.service.AccountService;
+import ticketing.account.account.domain.model.Account;
 import ticketing.account.account.domain.model.Email;
 import ticketing.account.account.domain.repository.AccountRepository;
 import ticketing.account.global.crypto.TokenCrypto;
@@ -35,6 +37,8 @@ public class EmailVerificationService {
 	
 	private final AccountRepository accountRepository;
 	
+	private final AccountService accountService;
+	
 	private final TokenCrypto tokenCrypto;
 	
 	private final VerificationSendLimiter verificationSendLimiter;
@@ -51,9 +55,14 @@ public class EmailVerificationService {
 	public EmailVerificationResult request(
 			String rawEmail,
 			EmailVerificationPurpose purpose,
+			UUID accountId,
 			String clientIp
 	) {
-		return createVerification(Email.of(rawEmail), purpose, clientIp);
+		return createVerification(
+				resolveDelivery(rawEmail, accountId, purpose),
+				purpose,
+				clientIp
+		);
 	}
 	
 	@Transactional
@@ -62,7 +71,13 @@ public class EmailVerificationService {
 		
 		previous.cancelForResend(Instant.now(clock));
 		
-		return createVerification(previous.getEmail(), previous.getPurpose(), clientIp);
+		Delivery delivery = resolveDelivery(
+				previous.getEmail().getEmail(),
+				previous.getAccountId(),
+				previous.getPurpose()
+		);
+		
+		return createVerification(delivery, previous.getPurpose(), clientIp);
 	}
 	
 	@Transactional(noRollbackFor = EmailVerificationException.class)
@@ -105,11 +120,11 @@ public class EmailVerificationService {
 	}
 	
 	private EmailVerificationResult createVerification(
-			Email email,
+			Delivery delivery,
 			EmailVerificationPurpose purpose,
 			String clientIp
 	) {
-		Delivery delivery = resolveDelivery(email, purpose);
+		Email email = delivery.email();
 		
 		verificationSendLimiter.acquire(email, clientIp);
 		
@@ -149,17 +164,25 @@ public class EmailVerificationService {
 				.orElseThrow(() -> new EmailVerificationException(EmailVerificationErrorCode.VERIFICATION_NOT_FOUND));
 	}
 	
-	private Delivery resolveDelivery(Email email, EmailVerificationPurpose purpose) {
+	private Delivery resolveDelivery(String rawEmail, UUID accountId, EmailVerificationPurpose purpose) {
+		if (purpose == EmailVerificationPurpose.SENSITIVE_ACTION) {
+			Account account = accountService.getLoginAccount(accountId);
+			
+			return new Delivery(account.getEmail(), account.getId(), VerificationMailType.CODE);
+		}
+		
+		Email email = Email.of(rawEmail);
+		
 		return switch (purpose) {
 			case SIGN_UP -> accountRepository.existsNonWithdrawnByEmail(email)
-					? new Delivery(null, VerificationMailType.ALREADY_REGISTERED)
-					: new Delivery(null, VerificationMailType.CODE);
+					? new Delivery(email, null, VerificationMailType.ALREADY_REGISTERED)
+					: new Delivery(email, null, VerificationMailType.CODE);
 	
 			case PASSWORD_RESET -> accountRepository.findNonWithdrawnByEmail(email)
-					.map(account -> new Delivery(account.getId(), VerificationMailType.CODE))
-					.orElseGet(() -> new Delivery(null, VerificationMailType.NONE));
+					.map(account -> new Delivery(email, account.getId(), VerificationMailType.CODE))
+					.orElseGet(() -> new Delivery(email, null, VerificationMailType.NONE));
 			
-			// TODO: CHANGE_EMAIL, SENSITIVE_ACTION 로그인 구현 후 추가
+			// TODO: CHANGE_EMAIL 로그인 구현 후 추가
 			
 			// TODO: 복구 목적은 복구 API 구현 후 추가
 			
