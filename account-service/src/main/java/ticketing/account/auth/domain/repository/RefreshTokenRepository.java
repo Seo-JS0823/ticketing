@@ -17,4 +17,5 @@ public interface RefreshTokenRepository {
 	void revokeSession(UUID sessionId, Instant now);
 	
 	void revokeAllByAccountId(UUID accountId, Instant now);
+	
 }

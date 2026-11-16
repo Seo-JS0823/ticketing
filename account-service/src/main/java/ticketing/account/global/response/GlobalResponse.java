@@ -17,6 +17,10 @@ public record GlobalResponse<T>(
 		return new GlobalResponse<>("SUCCESS", null, data);
 	}
 	
+	public static <T> GlobalResponse<T> success() {
+		return new GlobalResponse<>("SUCCESS", null, null);
+	}
+	
 	public static GlobalResponse<Void> of(String code, String message) {
 		return new GlobalResponse<>(code, message, null);
 	}
