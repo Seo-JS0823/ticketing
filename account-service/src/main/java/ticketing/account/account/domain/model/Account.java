@@ -167,6 +167,16 @@ public class Account {
 		changePassword(passwordHash, now);
 	}
 	
+	public boolean hasPassword() {
+		return this.credential != null;
+	}
+	
+	public List<SocialAccount> getActiveSocialAccounts() {
+		return socialAccounts.stream()
+				.filter(SocialAccount::isActive)
+				.toList();
+	}
+	
 	// 업데이트 전 활성 계정 검사
 	private void validateActive() {
 		if (this.status != AccountStatus.ACTIVE) {
