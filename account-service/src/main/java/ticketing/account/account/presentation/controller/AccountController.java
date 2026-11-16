@@ -1,6 +1,5 @@
 package ticketing.account.account.presentation.controller;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,8 +14,9 @@ import ticketing.account.account.presentation.request.EmailSignupRequest;
 import ticketing.account.account.presentation.request.KakaoSignupRequest;
 import ticketing.account.auth.application.result.AuthResult;
 import ticketing.account.auth.presentation.request.ClientType;
-import ticketing.account.auth.presentation.response.RefreshTokenCookie;
+import ticketing.account.auth.presentation.response.RefreshTokenDelivery;
 import ticketing.account.auth.presentation.response.TokenResponse;
+import ticketing.account.auth.presentation.response.TokenResponses;
 import ticketing.account.global.response.GlobalResponse;
 
 @RestController
@@ -38,7 +38,11 @@ public class AccountController {
 				request.verificationToken()
 		);
 		
-		return created(result, clientType);
+		return TokenResponses.of(
+				HttpStatus.CREATED,
+				result,
+				RefreshTokenDelivery.from(clientType)
+		);
 	}
 	
 	// 카카오 회원가입 완료
@@ -53,20 +57,10 @@ public class AccountController {
 				request.nickname()
 		);
 		
-		return created(result, clientType);
-	}
-	
-	private ResponseEntity<GlobalResponse<TokenResponse>> created(AuthResult result, ClientType clientType) {
-		ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
-		
-		if (clientType == ClientType.WEB) {
-			response.header(
-					HttpHeaders.SET_COOKIE,
-					RefreshTokenCookie.of(result.refreshToken()).toString()
-			);
-		}
-		
-		return response
-				.body(GlobalResponse.of(TokenResponse.of(result, clientType == ClientType.APP)));
+		return TokenResponses.of(
+				HttpStatus.CREATED,
+				result,
+				RefreshTokenDelivery.from(clientType)
+		);
 	}
 }

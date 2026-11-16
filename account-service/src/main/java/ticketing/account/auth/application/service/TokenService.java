@@ -4,12 +4,15 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ticketing.account.account.domain.model.Account;
+import ticketing.account.account.domain.model.AccountStatus;
+import ticketing.account.account.domain.repository.AccountRepository;
 import ticketing.account.auth.application.port.AccessTokenIssuer;
 import ticketing.account.auth.application.result.AccessTokenResult;
 import ticketing.account.auth.application.result.AuthResult;
@@ -35,32 +38,21 @@ public class TokenService {
 	private final AccessTokenIssuer accessTokenIssuer;
 
 	private final RefreshTokenRepository refreshTokenRepository;
+	
+	private final AccountRepository accountRepository;
 
 	private final TokenCrypto tokenCrypto;
 
 	private final Clock clock;
+	
+	@Value("${spring.application.name}")
+	private String serviceName;
 
-	/*
-	 * 새 로그인 세션 발급
-	 *
-	 * 같은 클래스의 issueRefreshToken을 직접 부르면 프록시를 거치지 않아
-	 * 그 메서드의 @Transactional이 적용되지 않으므로 이 메서드에 트랜잭션을 건다.
-	 * 바깥 트랜잭션(가입)이 있으면 거기에 참여한다.
-	 */
 	@Transactional
 	public AuthResult issue(Account account) {
-		AccessTokenResult accessToken = accessTokenIssuer.issue(
-				account.getId(),
-				account.getRole(),
-				account.getStatus()
-		);
-
-		RefreshTokenResult refreshToken = issueRefreshToken(account.getId());
-
-		return new AuthResult(accessToken, refreshToken, AccountSummary.from(account));
+		return authResult(account, issueRefreshToken(account.getId()));
 	}
-
-	// 새 로그인 세션의 첫 Refresh Token 발급
+	
 	@Transactional
 	public RefreshTokenResult issueRefreshToken(UUID accountId) {
 		String token = tokenCrypto.generateToken();
@@ -74,31 +66,29 @@ public class TokenService {
 		return result(accountId, token);
 	}
 	
-	/*
-	 * 토큰 재발급
-	 * 
-	 * 받은 토큰을 사용 처리한 후 같은 세션의 새 토큰을 발급
-	 * 이미 사용한 토큰이면 세션 전체 폐기후 거부
-	 * 예외가 나도 폐기는 저장되어야 하므로 AuthException은 롤백하지 않음
-	 */
 	@Transactional(noRollbackFor = AuthException.class)
-	public RefreshTokenResult rotate(String refreshToken) {
-		RefreshToken current = findForUpdate(refreshToken);
-		Instant now = Instant.now(clock);
+	public AuthResult refresh(String refreshToken) {
+		Rotation rotation = rotateInSession(refreshToken);
 		
-		if (current.isUsed()) {
-			refreshTokenRepository.revokeSession(current.getSessionId(), now);
+		Account account = accountRepository.findById(rotation.result().accountId())
+				.orElseThrow(() -> revokeAndReject(rotation.sessionId(), AuthErrorCode.INVALID_REFRESH_TOKEN));
+		
+		if (account.getStatus() == AccountStatus.WITHDRAWN) {
+			log.warn(
+					"[{}] 탈퇴 계정의 Refresh Token 으로 재발급을 요청해 세션을 폐기했습니다. sessionId={}",
+					serviceName,
+					rotation.sessionId()
+			);
 			
-			log.warn("이미 사용한 Refresh Token이 다시 들어와 세션을 폐기했습니다. sessionId={}", current.getSessionId());
-			
-			throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+			throw revokeAndReject(rotation.sessionId(), AuthErrorCode.ACCOUNT_WITHDRAWN);
 		}
 		
-		String newToken = tokenCrypto.generateToken();
-		
-		refreshTokenRepository.save(current.rotate(tokenCrypto.hash(newToken), now));
-		
-		return result(current.getAccountId(), newToken);
+		return authResult(account, rotation.result());
+	}
+	
+	@Transactional(noRollbackFor = AuthException.class)
+	public RefreshTokenResult rotate(String refreshToken) {
+		return rotateInSession(refreshToken).result();
 	}
 	
 	@Transactional
@@ -117,6 +107,51 @@ public class TokenService {
 		refreshTokenRepository.revokeAllByAccountId(accountId, Instant.now(clock));
 	}
 	
+	private Rotation rotateInSession(String refreshToken) {
+		RefreshToken current = findForUpdate(refreshToken);
+		Instant now = Instant.now(clock);
+		
+		if (current.isUsed()) {
+			refreshTokenRepository.revokeSession(current.getSessionId(), now);
+			
+			log.warn(
+					"[{}] 이미 사용한 Refresh Token이 다시 들어와 세션을 폐기했습니다. sessionId={}",
+					serviceName,
+					current.getSessionId()
+			);
+			
+			throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+		}
+		
+		String newToken = tokenCrypto.generateToken();
+		
+		refreshTokenRepository.save(current.rotate(tokenCrypto.hash(newToken), now));
+		
+		return new Rotation(
+				current.getSessionId(),
+				result(current.getAccountId(), newToken)
+		);
+	}
+	
+	private AuthException revokeAndReject(UUID sessionId, AuthErrorCode errorCode) {
+		refreshTokenRepository.revokeSession(sessionId, Instant.now(clock));
+		
+		return new AuthException(errorCode);
+	}
+	
+	private AuthResult authResult(
+			Account account,
+			RefreshTokenResult refreshToken
+	) {
+		AccessTokenResult accessToken = accessTokenIssuer.issue(
+				account.getId(),
+				account.getRole(),
+				account.getStatus()
+		);
+		
+		return new AuthResult(accessToken, refreshToken, AccountSummary.from(account));
+	}
+	
 	private RefreshToken findForUpdate(String refreshToken) {
 		if (refreshToken == null || refreshToken.isBlank()) {
 			throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
@@ -133,4 +168,6 @@ public class TokenService {
 				RefreshToken.TTL.toSeconds()
 		);
 	}
+	
+	private record Rotation(UUID sessionId, RefreshTokenResult result) {}
 }

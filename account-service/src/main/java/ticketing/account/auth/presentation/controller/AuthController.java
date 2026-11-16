@@ -1,6 +1,6 @@
 package ticketing.account.auth.presentation.controller;
 
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,8 +18,9 @@ import ticketing.account.auth.presentation.request.ClientType;
 import ticketing.account.auth.presentation.request.EmailLoginRequest;
 import ticketing.account.auth.presentation.request.KakaoLoginRequest;
 import ticketing.account.auth.presentation.response.KakaoLoginResponse;
-import ticketing.account.auth.presentation.response.RefreshTokenCookie;
+import ticketing.account.auth.presentation.response.RefreshTokenDelivery;
 import ticketing.account.auth.presentation.response.TokenResponse;
+import ticketing.account.auth.presentation.response.TokenResponses;
 import ticketing.account.global.exception.CommonErrorCode;
 import ticketing.account.global.exception.DomainException;
 import ticketing.account.global.response.GlobalResponse;
@@ -46,17 +47,11 @@ public class AuthController {
 				servletRequest.getRemoteAddr()
 		);
 		
-		ResponseEntity.BodyBuilder response = ResponseEntity.ok();
-		
-		// WEB은 Refresh Token을 쿠키로, APP은 바디로 전달
-		if (clientType == ClientType.WEB) {
-			response.header(
-					HttpHeaders.SET_COOKIE,
-					RefreshTokenCookie.of(result.refreshToken()).toString()
-			);
-		}
-		
-		return response.body(GlobalResponse.of(TokenResponse.of(result, clientType == ClientType.APP)));
+		return TokenResponses.of(
+				HttpStatus.OK,
+				result,
+				RefreshTokenDelivery.from(clientType)
+		);
 	}
 	
 	// 카카오 로그인
@@ -67,21 +62,26 @@ public class AuthController {
 	) {
 		KakaoLoginResult result = login(request);
 		
-		ResponseEntity.BodyBuilder response = ResponseEntity.ok();
-		
-		if (result.status() == KakaoLoginResult.Status.LOGIN && clientType == ClientType.WEB) {
-			response.header(
-					HttpHeaders.SET_COOKIE,
-					RefreshTokenCookie.of(result.auth().refreshToken()).toString()
-			);
+		if (result.status() != KakaoLoginResult.Status.LOGIN) {
+			return ResponseEntity.ok(GlobalResponse.of(KakaoLoginResponse.of(result, false)));
 		}
 		
-		return response.body(GlobalResponse.of(KakaoLoginResponse.of(result, clientType == ClientType.APP)));
+		RefreshTokenDelivery delivery = RefreshTokenDelivery.from(clientType);
+		
+		return TokenResponses.withRefreshToken(
+				HttpStatus.OK,
+				result.auth().refreshToken(),
+				delivery
+		)
+		.body(GlobalResponse.of(KakaoLoginResponse.of(result, delivery.inBody())));
 	}
 	
 	private KakaoLoginResult login(KakaoLoginRequest request) {
 		if (request.isWebRequest()) {
-			return kakaoLoginService.loginWithAuthorizationCode(request.authorizationCode(), request.redirectUri());
+			return kakaoLoginService.loginWithAuthorizationCode(
+					request.authorizationCode(),
+					request.redirectUri()
+			);
 		}
 		
 		if (request.isAppRequest()) {

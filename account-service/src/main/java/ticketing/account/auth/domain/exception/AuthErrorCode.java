@@ -35,6 +35,10 @@ public enum AuthErrorCode implements DomainErrorCode {
 			"이메일 또는 비밀번호가 일치하지 않습니다."
 	),
 	
+	NEW_PASSWORD_SAME_AS_CURRENT(
+			HttpStatus.BAD_REQUEST,
+			"현재 비밀번호와 다른 비밀번호를 입력해 주세요."
+	),
 	;
 	private final HttpStatus status;
 	

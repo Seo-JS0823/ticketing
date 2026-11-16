@@ -22,12 +22,22 @@ public final class RefreshTokenCookie {
 	private RefreshTokenCookie() {}
 	
 	public static ResponseCookie of(RefreshTokenResult refreshToken) {
-		return ResponseCookie.from(NAME, refreshToken.refreshToken())
+		return base(refreshToken.refreshToken())
+				.maxAge(Duration.ofSeconds(refreshToken.expiresIn()))
+				.build();
+	}
+	
+	public static ResponseCookie expired() {
+		return base("")
+				.maxAge(Duration.ZERO)
+				.build();
+	}
+	
+	private static ResponseCookie.ResponseCookieBuilder base(String value) {
+		return ResponseCookie.from(NAME, value)
 				.httpOnly(true)
 				.secure(true)
 				.sameSite("Lax")
-				.path(PATH)
-				.maxAge(Duration.ofSeconds(refreshToken.expiresIn()))
-				.build();
+				.path(PATH);
 	}
 }
