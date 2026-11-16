@@ -66,8 +66,14 @@ public class EmailVerificationService {
 	}
 	
 	@Transactional
-	public EmailVerificationResult resend(UUID verificationId, String clientIp) {
+	public EmailVerificationResult resend(
+			UUID verificationId,
+			UUID accountId,
+			String clientIp
+	) {
 		EmailVerification previous = findForUpdate(verificationId);
+		
+		validateResendOwner(previous, accountId);
 		
 		previous.cancelForResend(Instant.now(clock));
 		
@@ -117,6 +123,20 @@ public class EmailVerificationService {
 				verification.getAccountId(),
 				verification.getVerifiedAt()
 		);
+	}
+	
+	private void validateResendOwner(EmailVerification previous, UUID accountId) {
+		if (previous.getPurpose() != EmailVerificationPurpose.SENSITIVE_ACTION) {
+			return;
+		}
+		
+		if (accountId == null) {
+			throw new EmailVerificationException(CommonErrorCode.UNAUTHORIZED);
+		}
+		
+		if (!accountId.equals(previous.getAccountId())) {
+			throw new EmailVerificationException(EmailVerificationErrorCode.VERIFICATION_NOT_FOUND);
+		}
 	}
 	
 	private EmailVerificationResult createVerification(

@@ -262,15 +262,7 @@ public class EmailVerificationApiTest {
 		Account account = saveAccount("before@example.com", "RSD1");
 		
 		// 60초 재발송 간격을 지난 기존 요청
-		EmailVerification previous = jpaEmailVerificationRepository.save(
-				EmailVerification.request(
-						account.getId(),
-						Email.of("before@example.com"),
-						EmailVerificationPurpose.SENSITIVE_ACTION,
-						tokenCrypto.hash("123456"),
-						Instant.now().minus(Duration.ofMinutes(2))
-				)
-		);
+		EmailVerification previous = savePendingSensitiveAction(account.getId(), "before@example.com");
 		
 		// 요청 후 대표 이메일이 바뀐 상황 (대표 이메일 변경 기능이 없어 SQL로 만듦)
 		jdbcTemplate.update(
@@ -279,13 +271,41 @@ public class EmailVerificationApiTest {
 				account.getId()
 		);
 		
-		EmailVerification resent = findVerification(
-				mockMvc.perform(post("/api/v1/email-verifications/" + previous.getId() + "/resend"))
+		EmailVerification resend = findVerification(
+				resend(previous.getId(), accessToken(account.getId()))
 		);
 		
 		assertThat(captureMail().to()).isEqualTo("after@example.com");
-		assertThat(resent.getAccountId()).isEqualTo(account.getId());
-		assertThat(resent.getEmail()).isEqualTo(Email.of("after@example.com"));
+		assertThat(resend.getAccountId()).isEqualTo(account.getId());
+		assertThat(resend.getEmail()).isEqualTo(Email.of("after@example.com"));
+	}
+	
+	@Test
+	@DisplayName("Access Token 없이 SENSITIVE_ACTION을 재발송하면 401 UNAUTHORIZED, 기존 요청 유지")
+	void emailVerificationAPI_test13() throws Exception {
+		Account account = saveAccount("owner@example.com", "RSD2");
+		EmailVerification previous = savePendingSensitiveAction(account.getId(), "owner@example.com");
+		
+		resend(previous.getId(), null)
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+		
+		assertPendingOnly(previous);
+	}
+	
+	@Test
+	@DisplayName("다른 계정의 SENSITIVE_ACTION 요청을 재발송하면 404 VERIFICATION_NOT_FOUND, 기존 요청 유지와 메일 전송 없음")
+	void emailVerificationAPI_test14() throws Exception {
+		Account owner = saveAccount("owner@example.com", "RSD3");
+		Account other = saveAccount("other@example.com", "RSD4");
+		EmailVerification previous = savePendingSensitiveAction(owner.getId(), "owner@example.com");
+		
+		resend(previous.getId(), accessToken(other.getId()))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("VERIFICATION_NOT_FOUND"));
+		
+		assertPendingOnly(previous);
+		verify(verificationMailSender, after(500).never()).send(any());
 	}
 	
 	private ResultActions request(String email, String purpose) throws Exception {
@@ -308,6 +328,37 @@ public class EmailVerificationApiTest {
 		}
 		
 		return mockMvc.perform(builder);
+	}
+	
+	private ResultActions resend(UUID verificationId, String accessToken) throws Exception {
+		MockHttpServletRequestBuilder builder = post("/api/v1/email-verifications/" + verificationId + "/resend");
+		
+		if (accessToken != null) {
+			builder.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
+		}
+		
+		return mockMvc.perform(builder);
+	}
+	
+	private EmailVerification savePendingSensitiveAction(UUID accountId, String email) {
+		return jpaEmailVerificationRepository.save(
+				EmailVerification.request(
+						accountId,
+						Email.of(email),
+						EmailVerificationPurpose.SENSITIVE_ACTION,
+						tokenCrypto.hash("123456"),
+						Instant.now().minus(Duration.ofMinutes(2))
+				)
+		);
+	}
+	
+	private void assertPendingOnly(EmailVerification previous) {
+		assertThat(jpaEmailVerificationRepository.count()).isEqualTo(1);
+		
+		EmailVerificationStatus previousStatus = jpaEmailVerificationRepository.findById(previous.getId())
+				.orElseThrow().getStatus();
+		
+		assertThat(previousStatus).isEqualTo(EmailVerificationStatus.PENDING);
 	}
 	
 	// 실제 발급기로 만든 Access Token

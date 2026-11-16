@@ -58,10 +58,15 @@ public class EmailVerificationController {
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	public GlobalResponse<EmailVerificationResult> resend(
 			@PathVariable("id") UUID id,
+			@AuthenticationPrincipal Jwt jwt,
 			HttpServletRequest servletRequest
 	) {
 		return GlobalResponse.of(
-				emailVerificationService.resend(id, servletRequest.getRemoteAddr())
+				emailVerificationService.resend(
+						id,
+						accountIdOf(jwt),
+						servletRequest.getRemoteAddr()
+				)
 		);
 	}
 	
