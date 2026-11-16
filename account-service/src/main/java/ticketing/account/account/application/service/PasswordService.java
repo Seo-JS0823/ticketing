@@ -40,23 +40,30 @@ public class PasswordService {
 	
 	@Transactional
 	public void resetPassword(String verificationToken, String newPassword, String clientIp) {
+		// 1. 규칙 검증과 해시: 행 락 이전
 		PasswordPolicy.validate(newPassword);
 		
 		String passwordHash = passwordHasher.hash(newPassword);
 		
+		// 2. 인증 완료 토큰 사용: 행 락 사용
 		VerifiedEmail verified = emailVerificationService.consumeToken(
 				verificationToken,
 				EmailVerificationPurpose.PASSWORD_RESET
 		);
-		
+				
+		// 3. 대상 계정 확인
 		Account account = findTarget(verified);
 		
+		// 4. 현재 비밀번호와 같으면 거부
 		validateNotSameAsCurrent(account, newPassword);
 		
+		// 5. 재설정
 		account.resetPassword(passwordHash, Instant.now(clock));
 		
+		// 6. 계정의 모든 세션 폐기
 		tokenService.revokeAll(account.getId());
 		
+		// 이 IP의 로그인 실패 횟수 초기화
 		loginAttemptLimiter.recordSuccess(verified.email().getEmail(), clientIp);
 	}
 	
