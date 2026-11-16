@@ -1,7 +1,12 @@
 package ticketing.account.account.presentation.controller;
 
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -9,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
+import ticketing.account.account.application.result.MyAccountResult;
+import ticketing.account.account.application.service.AccountService;
 import ticketing.account.account.application.service.SignupService;
 import ticketing.account.account.presentation.request.EmailSignupRequest;
 import ticketing.account.account.presentation.request.KakaoSignupRequest;
@@ -25,6 +32,8 @@ import ticketing.account.global.response.GlobalResponse;
 public class AccountController {
 
 	private final SignupService signupService;
+	
+	private final AccountService accountService;
 	
 	// 이메일 회원가입
 	@PostMapping
@@ -62,5 +71,14 @@ public class AccountController {
 				result,
 				RefreshTokenDelivery.from(clientType)
 		);
+	}
+	
+	@GetMapping("/me")
+	public ResponseEntity<GlobalResponse<MyAccountResult>> getMyAccount(
+			@AuthenticationPrincipal Jwt jwt
+	) {
+		MyAccountResult result = accountService.getMyAccount(UUID.fromString(jwt.getSubject()));
+		
+		return ResponseEntity.ok(GlobalResponse.of(result));
 	}
 }

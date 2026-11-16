@@ -3,6 +3,8 @@ package ticketing.account.verification.presentation.controller;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,6 +37,7 @@ public class EmailVerificationController {
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	public GlobalResponse<EmailVerificationResult> request(
 			@Valid @RequestBody EmailVerificationCreateRequest request,
+			@AuthenticationPrincipal Jwt jwt,
 			HttpServletRequest servletRequest
 	) {
 		
@@ -42,6 +45,7 @@ public class EmailVerificationController {
 				emailVerificationService.request(
 						request.email(),
 						request.purpose(),
+						accountIdOf(jwt),
 						servletRequest.getRemoteAddr()
 				)
 		);
@@ -54,10 +58,15 @@ public class EmailVerificationController {
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	public GlobalResponse<EmailVerificationResult> resend(
 			@PathVariable("id") UUID id,
+			@AuthenticationPrincipal Jwt jwt,
 			HttpServletRequest servletRequest
 	) {
 		return GlobalResponse.of(
-				emailVerificationService.resend(id, servletRequest.getRemoteAddr())
+				emailVerificationService.resend(
+						id,
+						accountIdOf(jwt),
+						servletRequest.getRemoteAddr()
+				)
 		);
 	}
 	
@@ -81,5 +90,11 @@ public class EmailVerificationController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void cancel(@PathVariable("id") UUID id) {
 		emailVerificationService.cancel(id);
+	}
+	
+	private UUID accountIdOf(Jwt jwt) {
+		return jwt == null
+				? null
+				: UUID.fromString(jwt.getSubject());
 	}
 }
