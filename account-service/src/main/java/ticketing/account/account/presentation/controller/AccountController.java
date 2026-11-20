@@ -13,12 +13,15 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import ticketing.account.account.application.result.MyAccountResult;
+import ticketing.account.account.application.result.WithdrawalResult;
 import ticketing.account.account.application.service.AccountService;
 import ticketing.account.account.application.service.SignupService;
 import ticketing.account.account.presentation.request.EmailSignupRequest;
 import ticketing.account.account.presentation.request.KakaoSignupRequest;
+import ticketing.account.account.presentation.request.WithdrawalRequest;
 import ticketing.account.auth.application.result.AuthResult;
 import ticketing.account.auth.presentation.request.ClientType;
 import ticketing.account.auth.presentation.response.RefreshTokenDelivery;
@@ -78,6 +81,22 @@ public class AccountController {
 			@AuthenticationPrincipal Jwt jwt
 	) {
 		MyAccountResult result = accountService.getMyAccount(UUID.fromString(jwt.getSubject()));
+		
+		return ResponseEntity.ok(GlobalResponse.of(result));
+	}
+	
+	@PostMapping("/me/withdrawal")
+	public ResponseEntity<GlobalResponse<WithdrawalResult>> withdraw(
+			@AuthenticationPrincipal Jwt jwt,
+			@RequestBody WithdrawalRequest request,
+			HttpServletRequest servletRequest
+	) {
+		WithdrawalResult result = accountService.withdraw(
+				UUID.fromString(jwt.getSubject()),
+				request.currentPassword(),
+				request.verificationToken(),
+				servletRequest.getRemoteAddr()
+		);
 		
 		return ResponseEntity.ok(GlobalResponse.of(result));
 	}
