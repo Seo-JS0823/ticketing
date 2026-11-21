@@ -1,6 +1,9 @@
 package ticketing.account.account.presentation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -13,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -22,6 +26,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -37,6 +42,9 @@ import ticketing.account.account.domain.repository.AccountRepository;
 import ticketing.account.auth.application.port.AccessTokenIssuer;
 import ticketing.account.auth.application.service.TokenService;
 import ticketing.account.global.crypto.TokenCrypto;
+import ticketing.account.verification.application.dto.VerificationMailType;
+import ticketing.account.verification.application.event.VerificationMailRequested;
+import ticketing.account.verification.application.port.VerificationMailSender;
 import ticketing.account.verification.domain.model.EmailVerification;
 import ticketing.account.verification.domain.model.EmailVerificationPurpose;
 import ticketing.account.verification.infra.persistence.JpaEmailVerificationRepository;
@@ -51,8 +59,10 @@ import ticketing.account.verification.infra.persistence.JpaEmailVerificationRepo
 public class WithdrawalApiTest {
 
 	private static final String WITHDRAWAL_URL = "/api/v1/accounts/me/withdrawal";
-	
 	private static final String REFRESH_URL = "/api/v1/auth/refresh";
+	private static final String LOGIN_URL = "/api/v1/auth/login";
+	private static final String ME_URL = "/api/v1/accounts/me";
+	private static final String VERIFICATION_URL = "/api/v1/email-verifications";
 	
 	private static final String EMAIL = "withdraw@example.com";
 	
@@ -63,6 +73,8 @@ public class WithdrawalApiTest {
 	private static final String TOKEN = "sensitive-action-token";
 	
 	private static final String CODE = "123456";
+	
+	private static final long MAIL_WAIT_MILLIS = 5000;
 	
 	@Autowired
 	private MockMvc mockMvc;
@@ -90,6 +102,9 @@ public class WithdrawalApiTest {
 	
 	@Autowired
 	private RedisConnectionFactory redisConnectionFactory;
+	
+	@MockitoBean
+	private VerificationMailSender verificationMailSender;
 	
 	// 로그인 실패 카운터가 다음 테스트에 남지 않게 한다.
 	@BeforeEach
@@ -274,6 +289,63 @@ public class WithdrawalApiTest {
 				.andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
 	}
 	
+	@Test
+	@DisplayName("탈퇴 후 같은 이메일과 비밀번호로 로그인하면 403 ACCOUNT_WITHDRAWN")
+	void withdrawalAPI_test13() throws Exception {
+		Account account = savePasswordAccount();
+		
+		withdraw(account, PASSWORD, null)
+				.andExpect(status().isOk());
+		
+		mockMvc.perform(post(LOGIN_URL)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(
+						"""
+						{"email": "%s", "password": "%s"}
+						""".formatted(EMAIL, PASSWORD)
+				))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("ACCOUNT_WITHDRAWN"));
+	}
+	
+	@Test
+	@DisplayName("탈퇴 직후 남은 Access Token으로 내 정보를 조회하면 409 ACCOUNT_NOT_ACTIVE")
+	void withdrawalAPI_test14() throws Exception {
+		Account account = savePasswordAccount();
+		String accessToken = accessToken(account);
+		
+		withdraw(accessToken, PASSWORD, null)
+				.andExpect(status().isOk());
+		
+		mockMvc.perform(get(ME_URL)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("ACCOUNT_NOT_ACTIVE"));
+	}
+	
+	@Test
+	@DisplayName("탈퇴한 이메일로 다시 가입 인증을 요청하면 가입 안내가 아닌 인증 코드 메일을 보냄")
+	void withdrawalAPI_test15() throws Exception {
+		Account account = savePasswordAccount();
+		
+		withdraw(account, PASSWORD, null)
+				.andExpect(status().isOk());
+		
+		mockMvc.perform(post(VERIFICATION_URL)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(
+								"""
+								{"email": "%s", "purpose": "SIGN_UP"}
+								""".formatted(EMAIL)
+						))
+				.andExpect(status().isAccepted());
+		
+		VerificationMailRequested mail = captureMail();
+		
+		assertThat(mail.type()).isEqualTo(VerificationMailType.CODE);
+		assertThat(mail.to()).isEqualTo(EMAIL);
+	}
+	
 	private ResultActions withdraw(Account account, String currentPassword, String verificationToken) throws Exception {
 		return withdraw(accessToken(account), currentPassword, verificationToken);
 	}
@@ -306,6 +378,14 @@ public class WithdrawalApiTest {
 						{"refreshToken": "%s"}
 						""".formatted(refreshToken)
 				));
+	}
+	
+	private VerificationMailRequested captureMail() {
+		ArgumentCaptor<VerificationMailRequested> captor = ArgumentCaptor.forClass(VerificationMailRequested.class);
+		
+		verify(verificationMailSender, timeout(MAIL_WAIT_MILLIS)).send(captor.capture());
+		
+		return captor.getValue();
 	}
 	
 	// 실제 발급기로 만든 Access Token
